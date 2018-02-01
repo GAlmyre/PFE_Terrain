@@ -33,10 +33,14 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
 
 void MainWindow::createActions() {
 
-  _openAction = new QAction(tr("&Open"), this);
-  _openAction->setStatusTip(tr("Open a file from your computer"));
-  connect(_openAction, SIGNAL(triggered()), this, SLOT(open()));
+  _loadHeightmapAction = new QAction(tr("&Load heightmap"), this);
+  _loadHeightmapAction->setStatusTip(tr("Load the selected heightmap"));
+  connect(_loadHeightmapAction, SIGNAL(triggered()), this, SLOT(loadHeightmap()));
 
+  _loadTextureAction = new QAction(tr("&Load texture"), this);
+  _loadTextureAction->setStatusTip(tr("Load the selected texture"));
+  connect(_loadTextureAction, SIGNAL(triggered()), this, SLOT(loadTexture()));
+  
   _exitAction = new QAction(tr("&Exit"), this);
   _exitAction->setStatusTip(tr("Exit the program"));
   connect(_exitAction, SIGNAL(triggered()), this, SLOT(exit()));
@@ -45,23 +49,42 @@ void MainWindow::createActions() {
 void MainWindow::createMenu() {
 
   _fileMenu = menuBar()->addMenu(tr("&File"));
-  _fileMenu->addAction(_openAction);
+  _fileMenu->addAction(_loadHeightmapAction);
+  _fileMenu->addAction(_loadTextureAction);
   _fileMenu->addSeparator();
   _fileMenu->addAction(_exitAction);
+
+  _fileMenu = menuBar()->addMenu(tr("&View"));
+
+  _fileMenu = menuBar()->addMenu(tr("&Options"));
+  /*TODO ajouter checkbox brouillard de distance
+    double check box exclusives mutuellement pour le choix de la méthode de tessellation
+   */
 }
 
-// Handles the opening of a 3D file
-void MainWindow::open() {
+// Handles the opening of a heightmap
+void MainWindow::loadHeightMap() {
 
-  QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),"../data", tr("3D files (*.obj *pgm3d)"), Q_NULLPTR, QFileDialog::Options(QFileDialog::DontUseNativeDialog));
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),"../data", tr("HeightMap (*.png *.bmp *.pgm *.tga *.ppm)"), Q_NULLPTR, QFileDialog::Options(QFileDialog::DontUseNativeDialog));
 
   QFileInfo fileInfo(fileName);
   QString fileExtension = fileInfo.suffix();
 
-  std::cout << "opened file :" << fileName.toStdString() << '\n';
+  std::cout << "opened heightmap file :" << fileName.toStdString() << '\n';
 }
 
-void MainWindow::exit() {
+// Handles the opening of a texture
+void MainWindow::loadTexture() {
 
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),"../data", tr("Texture (*.png *.bmp *.pgm *.tga *.ppm)"), Q_NULLPTR, QFileDialog::Options(QFileDialog::DontUseNativeDialog));
+
+  QFileInfo fileInfo(fileName);
+  QString fileExtension = fileInfo.suffix();
+
+  std::cout << "opened texture file :" << fileName.toStdString() << '\n';
+}
+
+// Closes the main window
+void MainWindow::exit() {
   this->close();
 }

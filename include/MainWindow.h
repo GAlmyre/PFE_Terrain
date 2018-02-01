@@ -29,15 +29,17 @@ private:
   Ui::MainWindow *_ui;
   Viewer* _viewer;
   QMenu* _fileMenu;
-  QAction* _openAction;
+  QAction* _loadHeightmapAction;
+  QAction* _loadTextureAction;
   QAction* _exitAction;
 
   void createMenu();
   void createActions();
 
 private slots:
-  void open();
   void exit();
+  void loadHeightMap();
+  void loadTexture();
 };
 
 #endif // MAINWINDOW_HPP

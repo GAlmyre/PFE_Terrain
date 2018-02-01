@@ -19,7 +19,8 @@ Viewer::Viewer(QWidget *parent)
 }
 
 Viewer::~Viewer(){
-  delete _shader;
+  if(!_shader)
+    delete _shader;
 }
 
 QSize Viewer::minimumSizeHint() const{

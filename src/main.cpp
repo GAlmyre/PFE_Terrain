@@ -18,8 +18,10 @@ int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
   MainWindow window;
 
-  window.resize(1300,1300);
+  unsigned int height = 900;
+  float ratio = 16./9;
+  window.resize(ratio*height,height);
   window.show();
-
+  
   return app.exec();
 }
