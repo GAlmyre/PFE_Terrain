@@ -2,7 +2,7 @@
 #include <QApplication>
 #include <QDesktopWidget>
 
-#include "MainWindow.hpp"
+#include "MainWindow.h"
 
 #include <cstdlib>
 #include <iostream>

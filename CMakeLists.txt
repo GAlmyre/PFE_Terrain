@@ -23,7 +23,7 @@ file(
 include_directories(ext/)
 include_directories(assets/)
 include_directories(include/)
-include_directories(eigen3/)
+include_directories(ext/eigen3/)
 
 # Executable + source_files
 add_executable(

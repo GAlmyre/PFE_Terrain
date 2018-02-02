@@ -19,11 +19,12 @@ Mesh::~Mesh()
 
 }
 
-void VEF::draw(QOpenGLShaderProgram* shader){
+void Mesh::draw(const QOpenGLShaderProgram &shader){
 
   if(!_initialized)
     initVAO();
 
+    /*
   shader->setUniformValue(shader->uniformLocation("world_mat"), this->worldMatrix());
   _vertexArray.bind();
   _vertexBuffer->bind();
@@ -50,7 +51,7 @@ void VEF::draw(QOpenGLShaderProgram* shader){
   _indexBuffer->release();
   _vertexBuffer->release();
   _vertexArray.release();
-
+    */
 }
 
 

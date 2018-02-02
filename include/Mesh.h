@@ -1,6 +1,9 @@
 #ifndef MESH_H
 #define MESH_H
+
 #include <vector>
+#include <QtOpenGL>
+
 #include "Eigen/Eigen"
 
 class Mesh
@@ -18,20 +21,20 @@ class Mesh
     Eigen::Vector3f position;
     Eigen::Vector3f normal;
     Eigen::Vector2f texcoord;
-  }
+  };
   
  public:
   Mesh();
   ~Mesh();
 
-  virtual void draw(const QOpenGLShaderProgram& shader);
+  virtual void draw(const QOpenGLShaderProgram &shader);
 
   Eigen::Matrix4f worldMatrix();
  protected:
   std::vector<Vertex> _vertices;
   std::vector<unsigned int> _indices;
 
-  void initVAO();
+  void initVAO() {};
   
   bool _initialized;//true if VAO has been initialized
   QOpenGLVertexArrayObject _vertexArray;
@@ -43,4 +46,4 @@ class Mesh
   Eigen::Vector3f _position;
 };
 
-#endif MESH_H
+#endif // MESH_H

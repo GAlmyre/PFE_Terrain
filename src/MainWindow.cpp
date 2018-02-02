@@ -2,7 +2,7 @@
 
 #include <QtWidgets>
 
-#include "MainWindow.hpp"
+#include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include <iostream>
 
@@ -35,7 +35,7 @@ void MainWindow::createActions() {
 
   _loadHeightmapAction = new QAction(tr("&Load heightmap"), this);
   _loadHeightmapAction->setStatusTip(tr("Load the selected heightmap"));
-  connect(_loadHeightmapAction, SIGNAL(triggered()), this, SLOT(loadHeightmap()));
+  connect(_loadHeightmapAction, SIGNAL(triggered()), this, SLOT(loadHeightMap()));
 
   _loadTextureAction = new QAction(tr("&Load texture"), this);
   _loadTextureAction->setStatusTip(tr("Load the selected texture"));
