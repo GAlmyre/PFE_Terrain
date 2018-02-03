@@ -1,10 +1,9 @@
 // MainWindow.cpp
 
-#include <QtWidgets>
-
-#include "MainWindow.h"
+#include <MainWindow.h>
 #include "ui_MainWindow.h"
-#include <iostream>
+
+#include <Viewer.h>
 
 MainWindow::MainWindow(QWidget *parent) :
   QMainWindow(parent),

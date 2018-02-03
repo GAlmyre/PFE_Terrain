@@ -7,7 +7,7 @@
 #include <QWidget>
 #include <QSlider>
 
-#include "Viewer.h"
+class Viewer;
 
 namespace Ui {
   class MainWindow;

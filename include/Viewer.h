@@ -3,9 +3,8 @@
 #ifndef VIEWER_HPP
 #define VIEWER_HPP
 
+#include <OpenGL.h>
 #include <QtWidgets>
-#include <QtOpenGL>
-#include <QOpenGLShaderProgram>
 
 // This class will handle the rendering of the VEF it stores using openGL
 class Viewer : public QOpenGLWidget
@@ -31,12 +30,18 @@ protected:
   void mousePressEvent(QMouseEvent *e);
   void mouseReleaseEvent(QMouseEvent *e);
 
+protected slots:
+  void messageLogged(const QOpenGLDebugMessage &msg);
+
 private:
   QOpenGLShaderProgram * _shader;
 
   QOpenGLVertexArrayObject _object;
   QOpenGLBuffer _vertexBufferId;
   QOpenGLBuffer* _faceBuffer;
+  GLFuncs *_funcs;
+
+  QOpenGLDebugLogger *_debugLogger;
 
   bool _track;
   bool _move;
