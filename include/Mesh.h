@@ -30,6 +30,7 @@ class Mesh
   virtual void draw(const QOpenGLShaderProgram &shader);
 
   void createGrid(float width, float height, int nbRows, int nbColumns, bool quads);
+  void clear();
 
   Eigen::Matrix4f worldMatrix();
  protected:
@@ -43,7 +44,7 @@ class Mesh
   QOpenGLBuffer* _vertexBuffer;
   QOpenGLBuffer* _indexBuffer;
   
-  bool _updateWorldMat;
+  bool _updateWorldMat;//true if _worldMat needs to be updated
   Eigen::Matrix4f _worldMat;
   Eigen::Vector3f _position;
 };
