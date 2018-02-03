@@ -7,6 +7,7 @@
 #include <QWidget>
 #include <QSlider>
 
+class QActionGroup;
 class Viewer;
 
 namespace Ui {
