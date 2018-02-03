@@ -1,137 +1,164 @@
 #include <FreeFlyCamera.h>
 
-/*
+#include <utils.h>
 
 using namespace Eigen;
 
-Camera::Camera(Vector3f position, Vector3f up, float yaw, float pitch)
-        : m_front(Vector3f(0.0f, 0.0f, -1.0f)), m_movementSpeed(SPEED), m_mouseSensitivity(SENSITIVTY), m_fovy(ZOOM), m_direction(NONE)
+Camera::Camera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height)
 {
-  m_offsetBufferEnd = 0;
+  m_viewMatrix.setIdentity();
+
   m_position = position;
-  m_worldUp = up;
-  m_yaw = yaw;
-  m_pitch = pitch;
-  updateCameraVectors();
+  m_direction = -direction;
+
+  m_yaw = 0;
+  m_pitch = 0;
+
+  m_width = width;
+  m_height = height;
+
+  m_fovy = M_PI / 3.;
+  m_near = 0.1;
+  m_far = 50000.;
+
+  updateProjectionMatrix();
   initOffsetBuffer();
 }
-// Constructor with scalar values
-Camera::Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch)
-        : m_front(Vector3f(0.0f, 0.0f, -1.0f)), m_movementSpeed(SPEED), m_mouseSensitivity(SENSITIVTY), m_fovy(ZOOM)
-{
-  m_position = Vector3f(posX, posY, posZ);
-  m_worldUp = Vector3f(upX, upY, upZ);
-  m_yaw = yaw;
-  m_pitch = pitch;
-  updateCameraVectors();
-  initOffsetBuffer();
+
+void Camera::setPerspective(float fovY, float near, float far) {
+  m_fovy = fovY;
+  m_near = near;
+  m_far = far;
+  updateProjectionMatrix();
 }
 
-// Returns the view matrix calculated using Eular Angles and the LookAt Matrix
-Matrix4f Camera::getViewMatrix() const
-{
-  Eigen::lookAt
-  return glm::lookAt(m_position, m_position + m_front, m_up);
-}
-
-const Matrix4f &Camera::getProjection() const {
-  return m_projection;
-}
-
-void Camera::setScreenSize(int width, int height) {
-  m_screenWidth = width;
-  m_screenHeight = height;
+void Camera::setViewport(int width, int height) {
+  m_width = width;
+  m_height = height;
   m_screenRatio = width / (float) height;
-  calcProjection();
+  updateProjectionMatrix();
 }
 
-void Camera::calcProjection() {
-  float w = m_fr * m_screenWidth;
-  float h = m_fr * m_screenHeight;
-  float n = m_fz * m_zoom;
-  float f = m_far;
+void Camera::updateProjectionMatrix() {
+  m_ProjectionMatrix.setIdentity();
+  float aspect = m_width / m_height;
+  float theta = m_fovy * 0.5;
+  float range = m_far - m_near;
+  float invtan = 1./tan(theta);
 
-  m_projection(0, 0) = 2 * n / w;
-  m_projection(1, 1) = 2 * n / h;
-  m_projection(2, 2) = (f + n) / (n - f);
-  m_projection(2, 3) = -1;
-  m_projection(3, 2) = (2 * f*n) / (n - f);
-
-  m_tanHalfFovy = h / (2 * n);
+  m_ProjectionMatrix(0,0) = invtan / aspect;
+  m_ProjectionMatrix(1,1) = invtan;
+  m_ProjectionMatrix(2,2) = -(m_near + m_far) / range;
+  m_ProjectionMatrix(3,2) = -1;
+  m_ProjectionMatrix(2,3) = -2 * m_near * m_far / range;
+  m_ProjectionMatrix(3,3) = 0;
 }
 
-void Camera::centerOnAABB(const AlignedBox & bBox, const Vector3f &dir) {
-  Vector3f front;
-  if (dir == Vector3f::Zero()) {
-    front = m_front;
-  } else {
-    //Update Yaw and pitch
-    front = dir;
-    if (dir.y() != 0) {
-      m_yaw = 90;
-      m_pitch = dir.y() * 89;
-    } else {
-      if (dir.x() == 1) {
-        m_yaw = 0;
-      } else {
-        m_yaw = 90 * dir.z() + 180 * dir.x();
-      }
-      m_pitch = 0;
-    }
-    updateCameraVectors();
-  }
-  Vector3f max = bBox.max();
-  Vector3f center = bBox.center();
-  Vector3f maxCentered = max - center;
-  float radius = maxCentered.norm();
-  float extRadius = radius;
+void Camera::updateViewMatrix() {
+  m_viewMatrix.setIdentity();
 
-  float tanHalfFovy = m_tanHalfFovy;
-  float tanHalfFovx = tanHalfFovy * m_screenRatio;
-  float ry = extRadius / tanHalfFovy;
-  float rx = extRadius / tanHalfFovx;
-  float camRadius = std::max(ry, rx);
+  Vector3f right = m_direction.cross(m_worldUp).normalized();
+  Vector3f up = right.cross(m_direction).normalized();
 
-  Vector3f camPos = -camRadius * front.normalized() + center;
+  m_viewMatrix.linear().row(0) = right; // Right
+  m_viewMatrix.linear().row(1) = up; // Up
+  m_viewMatrix.linear().row(2) = m_direction; // Direction
 
-  m_position = camPos;
-  m_movementSpeed = camRadius / 3.f;
+  m_viewMatrix.translation() = - (m_viewMatrix.linear() * m_position);
+}
+
+const Eigen::Affine3f &Camera::viewMatrix() const {
+  return m_viewMatrix;
+}
+
+const Eigen::Matrix4f &Camera::projectionMatrix() const {
+  return m_ProjectionMatrix;
+}
+
+Eigen::Vector3f Camera::direction() {
+  return -m_viewMatrix.linear().row(2);
+}
+
+Eigen::Vector3f Camera::up() {
+  return m_viewMatrix.linear().row(1);
+}
+
+Eigen::Vector3f Camera::right() {
+  return m_viewMatrix.linear().row(0);
+}
+
+void Camera::centerOnAABB(const AlignedBox<float, 3> &bBox, const Vector3f &dir) {
+//  Vector3f front;
+//  if (dir == Vector3f::Zero()) {
+//    front = m_front;
+//  } else {
+//    //Update Yaw and pitch
+//    front = dir;
+//    if (dir.y() != 0) {
+//      m_yaw = 90;
+//      m_pitch = dir.y() * 89;
+//    } else {
+//      if (dir.x() == 1) {
+//        m_yaw = 0;
+//      } else {
+//        m_yaw = 90 * dir.z() + 180 * dir.x();
+//      }
+//      m_pitch = 0;
+//    }
+//    updateCameraVectors();
+//  }
+//  Vector3f max = bBox.max();
+//  Vector3f center = bBox.center();
+//  Vector3f maxCentered = max - center;
+//  float radius = maxCentered.norm();
+//  float extRadius = radius;
+//
+//  float tanHalfFovy = m_tanHalfFovy;
+//  float tanHalfFovx = tanHalfFovy * m_screenRatio;
+//  float ry = extRadius / tanHalfFovy;
+//  float rx = extRadius / tanHalfFovx;
+//  float camRadius = std::max(ry, rx);
+//
+//  Vector3f camPos = -camRadius * front.normalized() + center;
+//
+//  m_position = camPos;
+//  m_movementSpeed = camRadius / 3.f;
 }
 
 void Camera::update(float dt)
 {
-  float velocity = m_movementSpeed * dt;
+  float dist = m_speed * dt;
 
-  switch (m_direction) {
+  switch (m_move) {
     case FORWARD:
-      m_position += m_front * velocity;
+      m_position += direction() * dist;
       break;
     case BACKWARD:
-      m_position -= m_front * velocity;
+      m_position -= direction() * dist;
       break;
     case LEFT:
-      m_position -= m_right * velocity;
+      m_position -= right() * dist;
       break;
     case RIGHT:
-      m_position += m_right * velocity;
+      m_position += right() * dist;
       break;
     case FORWARDLEFT:
-      m_position += (- m_right * invsqrt2 * velocity + m_front * invsqrt2 * velocity);
+      m_position += (- right() * INV_SQRT_TWO * dist + direction() * INV_SQRT_TWO * dist);
       break;
     case FORWARDRIGHT:
-      m_position += (m_right * invsqrt2 * velocity + m_front * invsqrt2 * velocity);
+      m_position += (right() * INV_SQRT_TWO * dist + direction() * INV_SQRT_TWO * dist);
       break;
     case BACKWARDLEFT:
-      m_position += (- m_right * invsqrt2 * velocity - m_front * invsqrt2 * velocity);
+      m_position += (- right() * INV_SQRT_TWO * dist - direction() * INV_SQRT_TWO * dist);
       break;
     case BACKWARDRIGHT:
-      m_position += (m_right * invsqrt2 * velocity - m_front * invsqrt2 * velocity);
+      m_position += (right() * INV_SQRT_TWO * dist - direction() * INV_SQRT_TWO * dist);
       break;
     case UP:
-      m_position += m_worldUp * velocity;
+      m_position += m_worldUp * dist;
       break;
     case DOWN:
-      m_position -= m_worldUp * velocity;
+      m_position -= m_worldUp * dist;
       break;
     case NONE:
       break;
@@ -144,12 +171,17 @@ void Camera::update(float dt)
     m_yaw   += offset.x();
     m_pitch += offset.y();
 
-    if (m_pitch > 89.0f)
-      m_pitch = 89.0f;
-    if (m_pitch < -89.0f)
-      m_pitch = -89.0f;
+    if (radToDeg(m_pitch) > 89.0f)
+      m_pitch = degToRad(89.0f);
+    if (radToDeg(m_pitch) < -89.0f)
+      m_pitch = degToRad(-89.0f);
 
-    updateCameraVectors();
+    m_direction.x() = cos(m_yaw) * cos(m_pitch);
+    m_direction.y() = sin(m_pitch);
+    m_direction.z() = sin(m_yaw) * cos(m_pitch);
+    m_direction.normalize();
+
+    updateViewMatrix();
   }
 
   m_mouseOffset = Vector2f::Zero();
@@ -160,42 +192,42 @@ void Camera::processKeyPress(Key key)
   switch (key)
   {
     case KEY_FORWARD:
-      if (m_direction == LEFT)
-        m_direction = FORWARDLEFT;
-      else if (m_direction == RIGHT)
-        m_direction = FORWARDRIGHT;
+      if (m_move == LEFT)
+        m_move = FORWARDLEFT;
+      else if (m_move == RIGHT)
+        m_move = FORWARDRIGHT;
       else
-        m_direction = FORWARD;
+        m_move = FORWARD;
       break;
     case KEY_BACKWARD:
-      if (m_direction == LEFT)
-        m_direction = BACKWARDLEFT;
-      else if (m_direction == RIGHT)
-        m_direction = BACKWARDRIGHT;
+      if (m_move == LEFT)
+        m_move = BACKWARDLEFT;
+      else if (m_move == RIGHT)
+        m_move = BACKWARDRIGHT;
       else
-        m_direction = BACKWARD;
+        m_move = BACKWARD;
       break;
     case KEY_RIGHT:
-      if (m_direction == FORWARD)
-        m_direction = FORWARDRIGHT;
-      else if (m_direction == BACKWARD)
-        m_direction = BACKWARDRIGHT;
+      if (m_move == FORWARD)
+        m_move = FORWARDRIGHT;
+      else if (m_move == BACKWARD)
+        m_move = BACKWARDRIGHT;
       else
-        m_direction = RIGHT;
+        m_move = RIGHT;
       break;
     case KEY_LEFT:
-      if (m_direction == FORWARD)
-        m_direction = FORWARDLEFT;
-      else if (m_direction == BACKWARD)
-        m_direction = BACKWARDLEFT;
+      if (m_move == FORWARD)
+        m_move = FORWARDLEFT;
+      else if (m_move == BACKWARD)
+        m_move = BACKWARDLEFT;
       else
-        m_direction = LEFT;
+        m_move = LEFT;
       break;
     case KEY_UP:
-      m_direction = UP;
+      m_move = UP;
       break;
     case KEY_DOWN:
-      m_direction = DOWN;
+      m_move = DOWN;
       break;
   }
 }
@@ -205,44 +237,44 @@ void Camera::processKeyRelease(Key key)
   switch (key)
   {
     case KEY_FORWARD:
-      if (m_direction == Camera::FORWARD)
-        m_direction = Camera::NONE;
-      else if (m_direction == Camera::FORWARDLEFT)
-        m_direction = Camera::LEFT;
-      else if (m_direction == Camera::FORWARDRIGHT)
-        m_direction = Camera::RIGHT;
+      if (m_move == FORWARD)
+        m_move = NONE;
+      else if (m_move == FORWARDLEFT)
+        m_move = LEFT;
+      else if (m_move == FORWARDRIGHT)
+        m_move = RIGHT;
       break;
     case KEY_BACKWARD:
-      if (m_direction == Camera::BACKWARD)
-        m_direction = Camera::NONE;
-      else if (m_direction == Camera::BACKWARDLEFT)
-        m_direction = Camera::LEFT;
-      else if (m_direction == Camera::BACKWARDRIGHT)
-        m_direction = Camera::RIGHT;
+      if (m_move == BACKWARD)
+        m_move = NONE;
+      else if (m_move == BACKWARDLEFT)
+        m_move = LEFT;
+      else if (m_move == BACKWARDRIGHT)
+        m_move = RIGHT;
       break;
     case KEY_RIGHT:
-      if (m_direction == Camera::RIGHT)
-        m_direction = Camera::NONE;
-      else if (m_direction == Camera::FORWARDRIGHT)
-        m_direction = Camera::FORWARD;
-      else if (m_direction == Camera::BACKWARDRIGHT)
-        m_direction = Camera::BACKWARD;
+      if (m_move == RIGHT)
+        m_move = NONE;
+      else if (m_move == FORWARDRIGHT)
+        m_move = FORWARD;
+      else if (m_move == BACKWARDRIGHT)
+        m_move = BACKWARD;
       break;
     case KEY_LEFT:
-      if (m_direction == Camera::LEFT)
-        m_direction = Camera::NONE;
-      else if (m_direction == Camera::FORWARDLEFT)
-        m_direction = Camera::FORWARD;
-      else if (m_direction == Camera::BACKWARDLEFT)
-        m_direction = Camera::BACKWARD;
+      if (m_move == LEFT)
+        m_move = NONE;
+      else if (m_move == FORWARDLEFT)
+        m_move = FORWARD;
+      else if (m_move == BACKWARDLEFT)
+        m_move = BACKWARD;
       break;
     case KEY_UP:
-      if (m_direction == Camera::UP)
-        m_direction = Camera::NONE;
+      if (m_move == UP)
+        m_move = NONE;
       break;
     case KEY_DOWN:
-      if (m_direction == Camera::DOWN)
-        m_direction = Camera::NONE;
+      if (m_move == DOWN)
+        m_move = NONE;
       break;
   }
 }
@@ -265,37 +297,23 @@ void Camera::processMouseMove(int mouseX, int mouseY)
 }
 
 void Camera::processMouseScroll(float yoffset) {
-  if (m_zoom >= 1.0f && m_zoom <= 19.0f)
-    m_zoom += yoffset * std::log((21.0f - m_zoom))  * 0.001;
-  if (m_zoom <= 1.0f)
-    m_zoom = 1.0f;
-  if (m_zoom >= 19.0f)
-    m_zoom = 19.0f;
-
-  calcProjection();
+//  if (m_zoom >= 1.0f && m_zoom <= 19.0f)
+//    m_zoom += yoffset * std::log((21.0f - m_zoom))  * 0.001;
+//  if (m_zoom <= 1.0f)
+//    m_zoom = 1.0f;
+//  if (m_zoom >= 19.0f)
+//    m_zoom = 19.0f;
+//
+//  calcProjection();
 }
 
 void Camera::stopMovement() {
-  m_direction = Camera::NONE;
+  m_move = Camera::NONE;
 }
 
 void Camera::setMouseOffsetBufferSize(size_t size) {
   m_bufferSize = size;
   initOffsetBuffer();
-}
-
-// Calculates the front vector from the Camera's (updated) Eular Angles
-void Camera::updateCameraVectors()
-{
-  // Calculate the new Front vector
-  Vector3f front;
-  front.x = cos(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
-  front.y = sin(glm::radians(m_pitch));
-  front.z = sin(glm::radians(m_yaw)) * cos(glm::radians(m_pitch));
-  m_front = front.normalized();
-  // Also re-calculate the Right and Up vector
-  m_right = (m_front.cross(m_worldUp)).normalized();  // Normalize the vectors, because their length gets closer to 0 the more you look up or down which results in slower movement.
-  m_up    = (m_right.cross(m_front)).normalized();
 }
 
 void Camera::initOffsetBuffer() {
@@ -310,7 +328,7 @@ void Camera::initOffsetBuffer() {
 void Camera::updateOffsetBuffer()
 {
   //Remplissage du buffer de mouvements de la souris
-  m_offsetBuffer[m_offsetBufferEnd] = m_mouseOffset * m_mouseSensitivity;
+  m_offsetBuffer[m_offsetBufferEnd] = m_mouseOffset * m_sensitivity;
   m_offsetBufferEnd++;
   if (m_offsetBufferEnd == m_bufferSize) m_offsetBufferEnd = 0;
 }
@@ -324,5 +342,4 @@ Vector2f Camera::getSmoothMouseOffset()
   return offset;
 }
 
-*/
 

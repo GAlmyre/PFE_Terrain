@@ -4,16 +4,7 @@
 #include <memory>
 
 #include <Eigen/Dense>
-#include<Eigen/StdVector>
-/*
-// Default camera values
-const float YAW        = -90.0f;
-const float PITCH      =  0.0f;
-const float SPEED      =  3.0f;
-const float SENSITIVTY =  0.05f;
-const float ZOOM       =  45.0f;
-
-const float invsqrt2 = 0.7071;
+#include <Eigen/StdVector>
 
 // An abstract camera class that processes input and calculates the corresponding Eular Angles, Vectors and Matrices for use in OpenGL
 class Camera
@@ -42,45 +33,24 @@ public:
     KEY_DOWN,
   } Key;
 
-  // Camera Attributes
-  Eigen::Vector3f m_position;
-  Eigen::Vector3f m_front;
-  Eigen::Vector3f m_up;
-  Eigen::Vector3f m_right;
-  Eigen::Vector3f m_worldUp;
-  // Camera Perspective
-  const float m_fr = 1.3807118e-04;
-  const float m_fz = 0.1;
-  float m_screenRatio;
-  float m_screenWidth = 800.f;
-  float m_screenHeight = 600.f;
-  float m_zoom = 1.f;
-  float m_near = 0.1; // TODO : Remove
-  float m_far = 100;
-  float m_tanHalfFovy;
-  Eigen::Matrix4f m_projection;
-  // Eular Angles
-  float m_yaw;
-  float m_pitch;
-  // Camera options
-  float m_movementSpeed;
-  float m_mouseSensitivity;
-  float m_fovy;
-  Direction m_direction;
-
   // Constructor with vectors
-  Camera(Eigen::Vector3f position = Eigen::Vector3f(0.0f, 0.0f, 0.0f), Eigen::Vector3f up = Eigen::Vector3f(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH);
-  // Constructor with scalar values
-  Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch);
+  Camera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height);
 
-  // Returns the view matrix calculated using Eular Angles and the LookAt Matrix
-  Eigen::Matrix4f getViewMatrix() const;
-  // Returns the projection matrix
-  const Eigen::Matrix4f &getProjection() const;
-
-  void setScreenSize(int width, int height);
+  // Set perspective constants (fovY : vertical field of view (in radian))
+  void setPerspective(float fovY, float near, float far);
+  // Set Viewport
+  void setViewport(int width, int height);
   //Centre la caméra sur une bounding box
-  void centerOnAABB(const Eigen::AlignedBox &bBox, const Eigen::Vector3f &dir = Eigen::Vector3f(0., 0., 0.));
+  void centerOnAABB(const Eigen::AlignedBox<float, 3> &bBox, const Eigen::Vector3f &dir = Eigen::Vector3f(0., 0., 0.));
+
+  // Returns the view matrix
+  const Eigen::Affine3f &viewMatrix() const;
+  // Returns the projection matrix
+  const Eigen::Matrix4f &projectionMatrix() const;
+
+  Eigen::Vector3f direction();
+  Eigen::Vector3f up();
+  Eigen::Vector3f right();
 
   void update(float dt);
 
@@ -94,12 +64,38 @@ public:
 
   void setMouseOffsetBufferSize(size_t size);
 private:
-  //Calcule la matrice de projection
-  void calcProjection();
-  // Calculates the front vector from the Camera's (updated) Eular Angles
-  void updateCameraVectors();
+  void updateProjectionMatrix();
+  void updateViewMatrix();
 
-  //Mouse offset buffer
+private:
+  // Camera Perspective
+  float m_screenRatio;
+  float m_width;
+  float m_height;
+  float m_near;
+  float m_far;
+  float m_fovy;
+
+  // Matrices
+  Eigen::Matrix4f m_ProjectionMatrix;
+  Eigen::Affine3f m_viewMatrix;
+
+  // Camera world coordinates
+  Eigen::Vector3f m_position;
+  Eigen::Vector3f m_worldUp = Eigen::Vector3f(0.f, 1.f, 0.f);
+  Eigen::Vector3f m_direction;
+  float m_yaw;
+  float m_pitch;
+
+  // State
+
+
+  // Camera movements
+  float m_speed = 0.3;
+  float m_sensitivity = 0.05;
+  Direction m_move;
+
+  // Mouse offset buffer
   void initOffsetBuffer();
   void updateOffsetBuffer();
   Eigen::Vector2f getSmoothMouseOffset();
@@ -110,5 +106,5 @@ private:
 
   Eigen::Vector2f m_mouseLastPos, m_mouseOffset;
 };
-*/
+
 #endif // CAMERA_H
