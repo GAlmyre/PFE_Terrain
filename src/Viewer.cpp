@@ -1,14 +1,14 @@
 #include "Viewer.h"
 
 #include <iostream>
-#include <QOpenGLFunctions>
-#include <QOpenGLContext>
 
 Viewer::Viewer(QWidget *parent)
   : QOpenGLWidget(parent)
 {
   QSurfaceFormat format;
-  format.setVersion(3, 3);
+  format.setVersion(4, 3);
+  format.setProfile(QSurfaceFormat::CoreProfile);
+  format.setOption(QSurfaceFormat::DebugContext);
 
   this->setFormat(format);
 
@@ -31,15 +31,28 @@ QSize Viewer::sizeHint() const{
   return QSize(400, 400);
 }
 
-void Viewer::initializeGL(){
+void Viewer::initializeGL() {
+  // Load functions
+  _funcs = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
 
-  QOpenGLFunctions * f = QOpenGLContext::currentContext()->functions();
+  // Print OpenGL information
+  std::cout << "Loaded OpenGL" << std::endl
+            << "Version : " << _funcs->glGetString(GL_VERSION) << std::endl
+            << "Shading Version : " << _funcs->glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
-  f->glClearColor(0.6, 0.2, 0.2, 1.0);
+  // Initialize synchronous debugger
+  _debugLogger = new QOpenGLDebugLogger(this);
+  connect(_debugLogger, &QOpenGLDebugLogger::messageLogged, this, &Viewer::messageLogged);
+  if (_debugLogger->initialize()) {
+    _debugLogger->startLogging(QOpenGLDebugLogger::SynchronousLogging);
+    _debugLogger->enableMessages();
+  }
+
+  _funcs->glClearColor(0.6, 0.2, 0.2, 1.0);
   //f->glEnable(GL_CULL_FACE);
-  f->glEnable(GL_BLEND);
-  f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  _funcs->glEnable(GL_BLEND);
+  _funcs->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  _funcs->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 /*  //shader init
   _shader = new QOpenGLShaderProgram();
@@ -54,14 +67,13 @@ void Viewer::initializeGL(){
 
 void Viewer::paintGL(){
 
-  QOpenGLFunctions * f = QOpenGLContext::currentContext()->functions();
-  f->glClearColor(0.2, 0.2, 0.2, 1.0);
-  f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+  _funcs->glClearColor(0.2, 0.2, 0.2, 1.0);
+  _funcs->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 }
 
 void Viewer::resizeGL(int width, int height){
-  QOpenGLFunctions * f = QOpenGLContext::currentContext()->functions();
-  f->glViewport( 0, 0, (GLint)width, (GLint)height );
+
+  _funcs->glViewport( 0, 0, (GLint)width, (GLint)height );
 }
 
 void Viewer::mousePressEvent(QMouseEvent *e){
@@ -90,4 +102,9 @@ void Viewer::eventFromParent(QKeyEvent *e){
   QWidget::keyPressEvent(e);
 
   update();
+}
+
+void Viewer::messageLogged(const QOpenGLDebugMessage &msg) {
+  if(msg.id() == 131169 || msg.id() == 131185 || msg.id() == 131218 || msg.id() == 131204) return;
+  qDebug() << msg;
 }
