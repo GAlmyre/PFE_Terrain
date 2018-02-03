@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "Mesh.h"
 
 Mesh::Mesh()
@@ -54,6 +56,10 @@ void Mesh::draw(const QOpenGLShaderProgram &shader){
     */
 }
 
+void Mesh::createGrid(float width, float height, int nbRows, int nbColumns, bool quads)
+{
+  std::cout << "Mesh::createGrid() not yet implemented." << std::endl;
+}
 
 Eigen::Matrix4f Mesh::worldMatrix()
 {

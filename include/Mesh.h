@@ -29,6 +29,8 @@ class Mesh
 
   virtual void draw(const QOpenGLShaderProgram &shader);
 
+  void createGrid(float width, float height, int nbRows, int nbColumns, bool quads);
+
   Eigen::Matrix4f worldMatrix();
  protected:
   std::vector<Vertex> _vertices;
