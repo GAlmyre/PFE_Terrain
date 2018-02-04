@@ -15,7 +15,7 @@ Viewer::Viewer(QWidget *parent)
   // Auto update opengl drawing
   QTimer* timer = new QTimer( this );
   connect(timer, &QTimer::timeout, this, &Viewer::updateScene);
-  timer->start(0);
+  timer->start(5);
 }
 
 Viewer::~Viewer(){
