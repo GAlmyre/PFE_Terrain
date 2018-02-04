@@ -110,6 +110,7 @@ void Viewer::paintGL(){
 
 
   _frameNumber++;
+  QThread::msleep(5);
 }
 
 void Viewer::resizeGL(int width, int height){
