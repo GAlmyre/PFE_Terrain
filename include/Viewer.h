@@ -18,7 +18,6 @@ public:
   explicit Viewer(QWidget *parent = nullptr);
   ~Viewer();
 
-  void eventFromParent(QKeyEvent *e);
 protected:
   void initializeGL();
   void paintGL();
@@ -33,6 +32,7 @@ protected:
   void mouseReleaseEvent(QMouseEvent *e);
   void keyPressEvent(QKeyEvent *e);
   void keyReleaseEvent(QKeyEvent *e);
+  void focusOutEvent(QFocusEvent *event);
 
 protected slots:
   void messageLogged(const QOpenGLDebugMessage &msg);

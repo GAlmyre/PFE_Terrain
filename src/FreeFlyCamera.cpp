@@ -214,8 +214,6 @@ void FreeFlyCamera::update(float dt)
 
   updateViewMatrix();
 
-  std::cout << "Pitch : " << radToDeg(m_pitch) << ", Yaw : " << radToDeg(m_yaw) << std::endl;
-
   m_mouseOffset = Vector2f::Zero();
 }
 

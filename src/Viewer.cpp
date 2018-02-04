@@ -129,6 +129,7 @@ void Viewer::updateScene() {
 }
 
 void Viewer::mousePressEvent(QMouseEvent *e){
+  setFocus();
   if (e->button() == Qt::LeftButton)
     _camera.processMousePress(e->x(), e->y());
 }
@@ -229,13 +230,8 @@ void Viewer::keyReleaseEvent(QKeyEvent *e) {
   }
 }
 
-
-//Events received from MainWindow
-void Viewer::eventFromParent(QKeyEvent *e){
-
-  QWidget::keyPressEvent(e);
-
-  update();
+void Viewer::focusOutEvent(QFocusEvent * event) {
+  _camera.stopMovement();
 }
 
 void Viewer::messageLogged(const QOpenGLDebugMessage &msg) {

@@ -32,7 +32,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::keyPressEvent(QKeyEvent *e){
 
-  _viewer->eventFromParent(e);
 }
 
 void MainWindow::createActions() {

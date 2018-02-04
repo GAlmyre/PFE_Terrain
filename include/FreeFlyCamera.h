@@ -95,7 +95,7 @@ private:
 
 
   // FreeFlyCamera movements
-  float m_speed = 0.3;
+  float m_speed = 0.01;
   float m_sensitivity = 0.0005;
   Direction m_move = NONE;
 
