@@ -15,7 +15,7 @@ Viewer::Viewer(QWidget *parent)
   // Auto update opengl drawing
   QTimer* timer = new QTimer( this );
   connect(timer, &QTimer::timeout, this, &Viewer::updateScene);
-  timer->start(30);
+  timer->start(0);
 }
 
 Viewer::~Viewer(){
@@ -222,9 +222,9 @@ void Viewer::keyReleaseEvent(QKeyEvent *e) {
     case Qt::Key_F:
       _camera.processKeyRelease(FreeFlyCamera::KEY_DOWN);
       break;
-      case Qt::Key_F11:
-      	isFullScreen() ? showNormal() : showFullScreen();
-      	break;
+      //case Qt::Key_F11:
+      //	isFullScreen() ? showNormal() : showFullScreen();
+      //	break;
     default:
       QOpenGLWidget::keyReleaseEvent(e);
   }
