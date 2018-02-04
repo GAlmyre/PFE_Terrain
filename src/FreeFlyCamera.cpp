@@ -17,9 +17,9 @@ Camera::Camera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction
   m_width = width;
   m_height = height;
 
-  m_fovy = M_PI / 3.f;
+  m_fovy = M_PI / 3.;
   m_near = 0.1;
-  m_far = 50000.f;
+  m_far = 50000.;
 
   updateProjectionMatrix();
   initOffsetBuffer();
@@ -35,15 +35,16 @@ void Camera::setPerspective(float fovY, float near, float far) {
 void Camera::setViewport(int width, int height) {
   m_width = width;
   m_height = height;
+  m_screenRatio = width / (float) height;
   updateProjectionMatrix();
 }
 
 void Camera::updateProjectionMatrix() {
   m_ProjectionMatrix.setIdentity();
   float aspect = m_width / m_height;
-  float theta = m_fovy * 0.5f;
+  float theta = m_fovy * 0.5;
   float range = m_far - m_near;
-  float invtan = 1.f / tan(theta);
+  float invtan = 1./tan(theta);
 
   m_ProjectionMatrix(0,0) = invtan / aspect;
   m_ProjectionMatrix(1,1) = invtan;
@@ -179,9 +180,9 @@ void Camera::update(float dt)
     m_direction.y() = sin(m_pitch);
     m_direction.z() = sin(m_yaw) * cos(m_pitch);
     m_direction.normalize();
-  }
 
-  updateViewMatrix();
+    updateViewMatrix();
+  }
 
   m_mouseOffset = Vector2f::Zero();
 }
@@ -307,7 +308,7 @@ void Camera::processMouseScroll(float yoffset) {
 }
 
 void Camera::stopMovement() {
-  m_move = NONE;
+  m_move = Camera::NONE;
 }
 
 void Camera::setMouseOffsetBufferSize(size_t size) {

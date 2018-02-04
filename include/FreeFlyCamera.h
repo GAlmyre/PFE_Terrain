@@ -7,7 +7,7 @@
 #include <Eigen/StdVector>
 
 // An abstract camera class that processes input and calculates the corresponding Eular Angles, Vectors and Matrices for use in OpenGL
-class Camera
+class FreeFlyCamera
 {
 public:
   typedef enum {
@@ -34,7 +34,7 @@ public:
   } Key;
 
   // Constructor with vectors
-  Camera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height);
+  FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height);
 
   // Set perspective constants (fovY : vertical field of view (in radian))
   void setPerspective(float fovY, float near, float far);

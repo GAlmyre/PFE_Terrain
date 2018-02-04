@@ -27,7 +27,7 @@ class Mesh
   Mesh();
   ~Mesh();
 
-  virtual void draw(const QOpenGLShaderProgram &shader);
+  virtual void draw(QOpenGLShaderProgram &shader);
 
   void createGrid(float width, float height, int nbRows, int nbColumns, bool quads);
   void clear();
@@ -37,7 +37,7 @@ class Mesh
   std::vector<Vertex> _vertices;
   std::vector<unsigned int> _indices;
 
-  void initVAO() {};
+  void initVAO();
   
   bool _initialized;//true if VAO has been initialized
   QOpenGLVertexArrayObject _vertexArray;
