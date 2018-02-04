@@ -66,7 +66,7 @@ void Viewer::initializeGL() {
 
   _camera = new FreeFlyCamera(Eigen::Vector3f(0,0,-2), Eigen::Vector3f(0,-1,0), 600, 400);
   _camera->setPerspective(70, 0.1, 10000);
-  _mesh.createGrid(10.,10.,10,10, false);
+  _mesh.createGrid(10,10,10,20, false);
 }
 
 void Viewer::paintGL(){
@@ -81,7 +81,7 @@ void Viewer::paintGL(){
 
   QMatrix4x4 viewMat;
   viewMat.setToIdentity();
-  viewMat.lookAt(QVector3D(0,2,0), QVector3D(3,0,3), QVector3D(0,1,0));
+  viewMat.lookAt(QVector3D(0,10,-5), QVector3D(5,0,10), QVector3D(0,1,0));
 
   
   _simplePrg->bind();
@@ -95,12 +95,13 @@ void Viewer::paintGL(){
   //_simplePrg->setUniformValue(_simplePrg->uniformLocation("world_mat"), QMatrix4x4(_mesh.worldMatrix().data()).transposed());
   _mesh.draw(*_simplePrg);
 
-  //_funcs->glDepthFunc(GL_LEQUAL);
+  _funcs->glDepthFunc(GL_LEQUAL);
   _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(0,1,0));
   _funcs->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   _mesh.draw(*_simplePrg);
   
   _simplePrg->release();
+  
 }
 
 void Viewer::resizeGL(int width, int height){
