@@ -322,7 +322,7 @@ void FreeFlyCamera::processMouseRelease()
 void FreeFlyCamera::processMouseMove(int mouseX, int mouseY)
 {
   Vector2f mousePos(mouseX, - mouseY);
-  m_mouseOffset = mousePos - m_mouseLastPos;
+  m_mouseOffset += mousePos - m_mouseLastPos;
   m_mouseLastPos = mousePos;
 }
 

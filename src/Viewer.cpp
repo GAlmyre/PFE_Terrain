@@ -15,7 +15,7 @@ Viewer::Viewer(QWidget *parent)
   // Auto update opengl drawing
   QTimer* timer = new QTimer( this );
   connect(timer, &QTimer::timeout, this, &Viewer::updateScene);
-  timer->start(0);
+  timer->start(30);
 }
 
 Viewer::~Viewer(){
@@ -65,7 +65,7 @@ void Viewer::initializeGL() {
   _simplePrg->link();
 
   _camera.setPosition(Eigen::Vector3f(0,10,-5));
-  _camera.setDirection(Eigen::Vector3f(5,0,10) - Eigen::Vector3f(0,10,-5));
+  _camera.setDirection(-Eigen::Vector3f(0,10,-5));
   _camera.setViewport(600, 400);
   //_camera.setPerspective(70, 0.1, 10000);
 
@@ -222,9 +222,9 @@ void Viewer::keyReleaseEvent(QKeyEvent *e) {
     case Qt::Key_F:
       _camera.processKeyRelease(FreeFlyCamera::KEY_DOWN);
       break;
-      //case Qt::Key_F11:
-      //	isFullScreen() ? showNormal() : showFullScreen();
-      //	break;
+      case Qt::Key_F11:
+      	isFullScreen() ? showNormal() : showFullScreen();
+      	break;
     default:
       QOpenGLWidget::keyReleaseEvent(e);
   }
