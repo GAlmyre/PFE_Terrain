@@ -64,8 +64,11 @@ void Viewer::initializeGL() {
   _simplePrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/simple.frag");
   _simplePrg->link();
 
-  _camera = new FreeFlyCamera(Eigen::Vector3f(0,0,-2), Eigen::Vector3f(0,-1,0), 600, 400);
-  _camera->setPerspective(70, 0.1, 10000);
+  _camera.setPosition(Eigen::Vector3f(0,10,-5));
+  _camera.setDirection(Eigen::Vector3f(5,0,10) - Eigen::Vector3f(0,10,-5));
+  _camera.setViewport(600, 400);
+  //_camera.setPerspective(70, 0.1, 10000);
+
   _mesh.createGrid(10,10,10,20, false);
 }
 
@@ -81,12 +84,18 @@ void Viewer::paintGL(){
   viewMat.setToIdentity();
   viewMat.lookAt(QVector3D(0,10,-5), QVector3D(5,0,10), QVector3D(0,1,0));
 
+
+
   _simplePrg->bind();
-  //_simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), QMatrix4x4(_camera->projectionMatrix().data()).transposed());
-  //_simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), QMatrix4x4(_camera->viewMatrix().data()).transposed());
+  //_simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), QMatrix4x4(_camera.projectionMatrix().data()).transposed());
+  //_simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), QMatrix4x4(_camera.viewMatrix().data()).transposed());
   _funcs->glDepthFunc(GL_LESS);
-  _simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), projMat);
-  _simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), viewMat);
+//  _simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), projMat);
+  //_simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), viewMat);
+
+  _funcs->glUniformMatrix4fv(_simplePrg->uniformLocation("view_mat"), 1, GL_FALSE, _camera.viewMatrix().data());
+  _funcs->glUniformMatrix4fv(_simplePrg->uniformLocation("proj_mat"), 1, GL_FALSE, _camera.projectionMatrix().data());
+
   _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(1,0,0));
   _funcs->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   //_simplePrg->setUniformValue(_simplePrg->uniformLocation("world_mat"), QMatrix4x4(_mesh.worldMatrix().data()).transposed());
@@ -104,7 +113,7 @@ void Viewer::paintGL(){
 }
 
 void Viewer::resizeGL(int width, int height){
-  _camera->setViewport(width, height);
+  _camera.setViewport(width, height);
   _funcs->glViewport( 0, 0, (GLint)width, (GLint)height );
 }
 
@@ -114,24 +123,112 @@ void Viewer::updateScene() {
   _dt = time - _previousTime;
   _previousTime = time;
   updateFPSCount();
+
+  _camera.update(_dt);
   update();
 }
 
 void Viewer::mousePressEvent(QMouseEvent *e){
-
+  if (e->button() == Qt::LeftButton)
+    _camera.processMousePress(e->x(), e->y());
 }
 
 void Viewer::mouseReleaseEvent(QMouseEvent *e){
-
+  if (e->button() == Qt::LeftButton)
+    _camera.processMouseRelease();
 }
 
 void Viewer::mouseMoveEvent(QMouseEvent *e){
-
+  if (e->buttons() == Qt::LeftButton)
+    _camera.processMouseMove(e->x(), e->y());
 }
 
 void Viewer::wheelEvent(QWheelEvent *e){
 
 }
+
+void Viewer::keyPressEvent(QKeyEvent *e) {
+  switch (e->key())
+  {
+    case Qt::Key_Escape:
+      QCoreApplication::instance()->quit();
+      break;
+      //Wireframe
+    case Qt::Key_W:
+//      if (e->modifiers() & Qt::ControlModifier) {
+//        m_wireframe = !m_wireframe;
+//        makeCurrent();
+//        m_engine->setWireframe(m_wireframe);
+//        doneCurrent();
+//      }
+      break;
+      //Reload Shaders
+    case Qt::Key_R:
+//      if (e->modifiers() & Qt::ControlModifier) {
+//        m_engine->reloadShaders();
+//      }
+      break;
+      //Movement
+    case Qt::Key_Up:
+    case Qt::Key_Z:
+      _camera.processKeyPress(FreeFlyCamera::KEY_FORWARD);
+      break;
+    case Qt::Key_Down:
+    case Qt::Key_S:
+      _camera.processKeyPress(FreeFlyCamera::KEY_BACKWARD);
+      break;
+    case Qt::Key_Right:
+    case Qt::Key_D:
+      _camera.processKeyPress(FreeFlyCamera::KEY_RIGHT);
+      break;
+    case Qt::Key_Left:
+    case Qt::Key_Q:
+      _camera.processKeyPress(FreeFlyCamera::KEY_LEFT);
+      break;
+    case Qt::Key_E:
+      _camera.processKeyPress(FreeFlyCamera::KEY_UP);
+      break;
+    case Qt::Key_F:
+      _camera.processKeyPress(FreeFlyCamera::KEY_DOWN);
+      break;
+    default:
+      QOpenGLWidget::keyPressEvent(e);
+  }
+}
+
+void Viewer::keyReleaseEvent(QKeyEvent *e) {
+  switch (e->key())
+  {
+    case Qt::Key_Up:
+    case Qt::Key_Z:
+      _camera.processKeyRelease(FreeFlyCamera::KEY_FORWARD);
+      break;
+    case Qt::Key_Down:
+    case Qt::Key_S:
+      _camera.processKeyRelease(FreeFlyCamera::KEY_BACKWARD);
+      break;
+    case Qt::Key_Right:
+    case Qt::Key_D:
+      _camera.processKeyRelease(FreeFlyCamera::KEY_RIGHT);
+      break;
+    case Qt::Key_Left:
+    case Qt::Key_Q:
+      _camera.processKeyRelease(FreeFlyCamera::KEY_LEFT);
+      break;
+    case Qt::Key_E:
+      _camera.processKeyRelease(FreeFlyCamera::KEY_UP);
+      break;
+    case Qt::Key_F:
+      _camera.processKeyRelease(FreeFlyCamera::KEY_DOWN);
+      break;
+      //case Qt::Key_F11:
+      //	isFullScreen() ? showNormal() : showFullScreen();
+      //	break;
+    default:
+      QOpenGLWidget::keyReleaseEvent(e);
+  }
+}
+
 
 //Events received from MainWindow
 void Viewer::eventFromParent(QKeyEvent *e){

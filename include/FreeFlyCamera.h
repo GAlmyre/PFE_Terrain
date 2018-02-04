@@ -96,8 +96,8 @@ private:
 
   // FreeFlyCamera movements
   float m_speed = 0.3;
-  float m_sensitivity = 0.05;
-  Direction m_move;
+  float m_sensitivity = 0.0005;
+  Direction m_move = NONE;
 
   // Mouse offset buffer
   void initOffsetBuffer();

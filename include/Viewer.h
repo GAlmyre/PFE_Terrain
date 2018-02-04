@@ -31,6 +31,8 @@ protected:
   void wheelEvent(QWheelEvent *e);
   void mousePressEvent(QMouseEvent *e);
   void mouseReleaseEvent(QMouseEvent *e);
+  void keyPressEvent(QKeyEvent *e);
+  void keyReleaseEvent(QKeyEvent *e);
 
 protected slots:
   void messageLogged(const QOpenGLDebugMessage &msg);
@@ -59,7 +61,7 @@ private:
 
   QOpenGLDebugLogger *_debugLogger;
 
-  FreeFlyCamera *_camera;
+  FreeFlyCamera _camera;
   Mesh _mesh;
 };
 

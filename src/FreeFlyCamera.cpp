@@ -1,5 +1,7 @@
 #include <FreeFlyCamera.h>
 
+#include <iostream>
+
 #include <utils.h>
 
 using namespace Eigen;
@@ -9,6 +11,7 @@ FreeFlyCamera::FreeFlyCamera()
   , m_fovy(M_PI / 3.f), m_near(0.1), m_far(50000)
 {
   m_viewMatrix.setIdentity();
+  setDirection(m_direction);
 
   updateProjectionMatrix();
   initOffsetBuffer();
@@ -19,7 +22,7 @@ FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vecto
   m_viewMatrix.setIdentity();
 
   m_position = position;
-  m_direction = -direction;
+  setDirection(direction);
 
   m_yaw = 0;
   m_pitch = 0;
@@ -40,7 +43,17 @@ void FreeFlyCamera::setPosition(const Vector3f &position) {
 }
 
 void FreeFlyCamera::setDirection(const Vector3f &direction) {
-  m_direction = -direction;
+  m_direction = -direction.normalized();
+  m_pitch = asin(m_direction.y());
+
+  if (radToDeg(m_pitch) > 89.0f)
+    m_pitch = degToRad(89.0f);
+  if (radToDeg(m_pitch) < -89.0f)
+    m_pitch = degToRad(-89.0f);
+
+  m_yaw = asin(m_direction.z() / cos(m_pitch));
+  updateViewMatrix();
+
 }
 
 void FreeFlyCamera::setPerspective(float fovY, float near, float far) {
@@ -73,6 +86,11 @@ void FreeFlyCamera::updateProjectionMatrix() {
 
 void FreeFlyCamera::updateViewMatrix() {
   m_viewMatrix.setIdentity();
+
+  m_direction.x() = cos(m_pitch) * cos(m_yaw);
+  m_direction.y() = sin(m_pitch);
+  m_direction.z() = cos(m_pitch) * sin(m_yaw);
+  m_direction.normalize();
 
   Vector3f right = m_direction.cross(m_worldUp).normalized();
   Vector3f up = right.cross(m_direction).normalized();
@@ -185,21 +203,18 @@ void FreeFlyCamera::update(float dt)
   Vector2f offset = getSmoothMouseOffset();
 
   if (offset != Vector2f::Zero()) {
-    m_yaw   += offset.x();
-    m_pitch += offset.y();
+    m_yaw   -= offset.x();
+    m_pitch -= offset.y();
 
     if (radToDeg(m_pitch) > 89.0f)
       m_pitch = degToRad(89.0f);
     if (radToDeg(m_pitch) < -89.0f)
       m_pitch = degToRad(-89.0f);
-
-    m_direction.x() = cos(m_yaw) * cos(m_pitch);
-    m_direction.y() = sin(m_pitch);
-    m_direction.z() = sin(m_yaw) * cos(m_pitch);
-    m_direction.normalize();
   }
 
   updateViewMatrix();
+
+  std::cout << "Pitch : " << radToDeg(m_pitch) << ", Yaw : " << radToDeg(m_yaw) << std::endl;
 
   m_mouseOffset = Vector2f::Zero();
 }
@@ -352,7 +367,7 @@ void FreeFlyCamera::updateOffsetBuffer()
 
 Vector2f FreeFlyCamera::getSmoothMouseOffset()
 {
-  Vector2f offset(0);
+  Vector2f offset(0., 0.);
   for (int i = 0; i < m_bufferSize; i++) {
     offset += m_offsetBuffer[i];
   }
