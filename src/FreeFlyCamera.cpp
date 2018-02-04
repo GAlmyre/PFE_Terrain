@@ -4,7 +4,7 @@
 
 using namespace Eigen;
 
-Camera::Camera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height)
+FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height)
 {
   m_viewMatrix.setIdentity();
 
@@ -25,21 +25,21 @@ Camera::Camera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction
   initOffsetBuffer();
 }
 
-void Camera::setPerspective(float fovY, float near, float far) {
+void FreeFlyCamera::setPerspective(float fovY, float near, float far) {
   m_fovy = fovY;
   m_near = near;
   m_far = far;
   updateProjectionMatrix();
 }
 
-void Camera::setViewport(int width, int height) {
+void FreeFlyCamera::setViewport(int width, int height) {
   m_width = width;
   m_height = height;
   m_screenRatio = width / (float) height;
   updateProjectionMatrix();
 }
 
-void Camera::updateProjectionMatrix() {
+void FreeFlyCamera::updateProjectionMatrix() {
   m_ProjectionMatrix.setIdentity();
   float aspect = m_width / m_height;
   float theta = m_fovy * 0.5;
@@ -54,7 +54,7 @@ void Camera::updateProjectionMatrix() {
   m_ProjectionMatrix(3,3) = 0;
 }
 
-void Camera::updateViewMatrix() {
+void FreeFlyCamera::updateViewMatrix() {
   m_viewMatrix.setIdentity();
 
   Vector3f right = m_direction.cross(m_worldUp).normalized();
@@ -67,27 +67,27 @@ void Camera::updateViewMatrix() {
   m_viewMatrix.translation() = - (m_viewMatrix.linear() * m_position);
 }
 
-const Eigen::Affine3f &Camera::viewMatrix() const {
+const Eigen::Affine3f &FreeFlyCamera::viewMatrix() const {
   return m_viewMatrix;
 }
 
-const Eigen::Matrix4f &Camera::projectionMatrix() const {
+const Eigen::Matrix4f &FreeFlyCamera::projectionMatrix() const {
   return m_ProjectionMatrix;
 }
 
-Eigen::Vector3f Camera::direction() {
+Eigen::Vector3f FreeFlyCamera::direction() {
   return -m_viewMatrix.linear().row(2);
 }
 
-Eigen::Vector3f Camera::up() {
+Eigen::Vector3f FreeFlyCamera::up() {
   return m_viewMatrix.linear().row(1);
 }
 
-Eigen::Vector3f Camera::right() {
+Eigen::Vector3f FreeFlyCamera::right() {
   return m_viewMatrix.linear().row(0);
 }
 
-void Camera::centerOnAABB(const AlignedBox<float, 3> &bBox, const Vector3f &dir) {
+void FreeFlyCamera::centerOnAABB(const AlignedBox<float, 3> &bBox, const Vector3f &dir) {
 //  Vector3f front;
 //  if (dir == Vector3f::Zero()) {
 //    front = m_front;
@@ -125,7 +125,7 @@ void Camera::centerOnAABB(const AlignedBox<float, 3> &bBox, const Vector3f &dir)
 //  m_movementSpeed = camRadius / 3.f;
 }
 
-void Camera::update(float dt)
+void FreeFlyCamera::update(float dt)
 {
   float dist = m_speed * dt;
 
@@ -187,7 +187,7 @@ void Camera::update(float dt)
   m_mouseOffset = Vector2f::Zero();
 }
 
-void Camera::processKeyPress(Key key)
+void FreeFlyCamera::processKeyPress(Key key)
 {
   switch (key)
   {
@@ -232,7 +232,7 @@ void Camera::processKeyPress(Key key)
   }
 }
 
-void Camera::processKeyRelease(Key key)
+void FreeFlyCamera::processKeyRelease(Key key)
 {
   switch (key)
   {
@@ -279,24 +279,24 @@ void Camera::processKeyRelease(Key key)
   }
 }
 
-void Camera::processMousePress(int mouseX, int mouseY)
+void FreeFlyCamera::processMousePress(int mouseX, int mouseY)
 {
   m_mouseLastPos.x() = mouseX;
   m_mouseLastPos.y() = -mouseY;
 }
 
-void Camera::processMouseRelease()
+void FreeFlyCamera::processMouseRelease()
 {
 }
 
-void Camera::processMouseMove(int mouseX, int mouseY)
+void FreeFlyCamera::processMouseMove(int mouseX, int mouseY)
 {
   Vector2f mousePos(mouseX, - mouseY);
   m_mouseOffset = mousePos - m_mouseLastPos;
   m_mouseLastPos = mousePos;
 }
 
-void Camera::processMouseScroll(float yoffset) {
+void FreeFlyCamera::processMouseScroll(float yoffset) {
 //  if (m_zoom >= 1.0f && m_zoom <= 19.0f)
 //    m_zoom += yoffset * std::log((21.0f - m_zoom))  * 0.001;
 //  if (m_zoom <= 1.0f)
@@ -307,16 +307,16 @@ void Camera::processMouseScroll(float yoffset) {
 //  calcProjection();
 }
 
-void Camera::stopMovement() {
-  m_move = Camera::NONE;
+void FreeFlyCamera::stopMovement() {
+  m_move = FreeFlyCamera::NONE;
 }
 
-void Camera::setMouseOffsetBufferSize(size_t size) {
+void FreeFlyCamera::setMouseOffsetBufferSize(size_t size) {
   m_bufferSize = size;
   initOffsetBuffer();
 }
 
-void Camera::initOffsetBuffer() {
+void FreeFlyCamera::initOffsetBuffer() {
   m_offsetBuffer.clear();
   m_offsetBuffer.reserve(m_bufferSize);
   for (int i = 0; i < m_bufferSize; i++) {
@@ -325,7 +325,7 @@ void Camera::initOffsetBuffer() {
   m_offsetBufferEnd = 0;
 }
 
-void Camera::updateOffsetBuffer()
+void FreeFlyCamera::updateOffsetBuffer()
 {
   //Remplissage du buffer de mouvements de la souris
   m_offsetBuffer[m_offsetBufferEnd] = m_mouseOffset * m_sensitivity;
@@ -333,7 +333,7 @@ void Camera::updateOffsetBuffer()
   if (m_offsetBufferEnd == m_bufferSize) m_offsetBufferEnd = 0;
 }
 
-Vector2f Camera::getSmoothMouseOffset()
+Vector2f FreeFlyCamera::getSmoothMouseOffset()
 {
   Vector2f offset(0);
   for (int i = 0; i < m_bufferSize; i++) {

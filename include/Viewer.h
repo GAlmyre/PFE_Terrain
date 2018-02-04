@@ -6,6 +6,9 @@
 #include <OpenGL.h>
 #include <QtWidgets>
 
+#include "FreeFlyCamera.h"
+#include "Mesh.h"
+
 // This class will handle the rendering of the VEF it stores using openGL
 class Viewer : public QOpenGLWidget
 {
@@ -35,6 +38,7 @@ protected slots:
 
 private:
   QOpenGLShaderProgram * _shader;
+  QOpenGLShaderProgram * _simplePrg;
 
   QOpenGLVertexArrayObject _object;
   QOpenGLBuffer _vertexBufferId;
@@ -43,6 +47,9 @@ private:
 
   QOpenGLDebugLogger *_debugLogger;
 
+  FreeFlyCamera *_camera;
+  Mesh _mesh;
+  
   bool _track;
   bool _move;
   QVector2D _prevPos;

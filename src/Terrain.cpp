@@ -19,7 +19,7 @@ void Terrain::setTexture(const QImage& texture)
   _texture = texture;
 }
 
-void Terrain::drawBaseMesh(const QOpenGLShaderProgram &shader)
+void Terrain::drawBaseMesh(QOpenGLShaderProgram &shader)
 {
   _baseMesh.draw(shader);
 }
