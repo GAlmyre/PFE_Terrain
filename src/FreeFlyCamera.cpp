@@ -17,9 +17,9 @@ FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vecto
   m_width = width;
   m_height = height;
 
-  m_fovy = M_PI / 3.;
+  m_fovy = M_PI / 3.f;
   m_near = 0.1;
-  m_far = 50000.;
+  m_far = 50000.f;
 
   updateProjectionMatrix();
   initOffsetBuffer();
@@ -35,16 +35,15 @@ void FreeFlyCamera::setPerspective(float fovY, float near, float far) {
 void FreeFlyCamera::setViewport(int width, int height) {
   m_width = width;
   m_height = height;
-  m_screenRatio = width / (float) height;
   updateProjectionMatrix();
 }
 
 void FreeFlyCamera::updateProjectionMatrix() {
   m_ProjectionMatrix.setIdentity();
   float aspect = m_width / m_height;
-  float theta = m_fovy * 0.5;
+  float theta = m_fovy * 0.5f;
   float range = m_far - m_near;
-  float invtan = 1./tan(theta);
+  float invtan = 1.f / tan(theta);
 
   m_ProjectionMatrix(0,0) = invtan / aspect;
   m_ProjectionMatrix(1,1) = invtan;
@@ -180,9 +179,9 @@ void FreeFlyCamera::update(float dt)
     m_direction.y() = sin(m_pitch);
     m_direction.z() = sin(m_yaw) * cos(m_pitch);
     m_direction.normalize();
-
-    updateViewMatrix();
   }
+
+  updateViewMatrix();
 
   m_mouseOffset = Vector2f::Zero();
 }
@@ -308,7 +307,7 @@ void FreeFlyCamera::processMouseScroll(float yoffset) {
 }
 
 void FreeFlyCamera::stopMovement() {
-  m_move = FreeFlyCamera::NONE;
+  m_move = NONE;
 }
 
 void FreeFlyCamera::setMouseOffsetBufferSize(size_t size) {

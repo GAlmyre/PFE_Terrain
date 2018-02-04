@@ -72,14 +72,14 @@ void Mesh::draw(QOpenGLShaderProgram &shader){
   }
 
   glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
-
+/*
   if(vertex_loc)
     shader.disableAttributeArray(vertex_loc);
   if(normal_loc)
     shader.disableAttributeArray(normal_loc);
   if(texcoord_loc)
     shader.disableAttributeArray(texcoord_loc);
-    
+  */
     
   _indexBuffer->release();
   _vertexBuffer->release();

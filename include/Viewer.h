@@ -15,7 +15,7 @@ class Viewer : public QOpenGLWidget
   Q_OBJECT
 
 public:
-  explicit Viewer(QWidget *parent = 0);
+  explicit Viewer(QWidget *parent = nullptr);
   ~Viewer();
 
   void eventFromParent(QKeyEvent *e);
@@ -27,7 +27,6 @@ protected:
   QSize minimumSizeHint() const;
   QSize sizeHint() const;
 
-  void timerEvent(QTimerEvent *);
   void mouseMoveEvent(QMouseEvent *e);
   void wheelEvent(QWheelEvent *e);
   void mousePressEvent(QMouseEvent *e);
@@ -35,6 +34,13 @@ protected:
 
 protected slots:
   void messageLogged(const QOpenGLDebugMessage &msg);
+  void updateScene();
+
+signals:
+  void fpsChanged(float fps);
+
+private:
+  void updateFPSCount();
 
 private:
   QOpenGLShaderProgram * _shader;
@@ -45,18 +51,16 @@ private:
   QOpenGLBuffer* _faceBuffer;
   GLFuncs *_funcs;
 
+  QTime _time;
+  float _fpsSum;
+  float _previousTime;
+  float _dt;
+  unsigned long _frameNumber;
+
   QOpenGLDebugLogger *_debugLogger;
 
   FreeFlyCamera *_camera;
   Mesh _mesh;
-  
-  bool _track;
-  bool _move;
-  QVector2D _prevPos;
-  float _angularSpeed;
-  QVector3D _rotationAxis;
-
-  QBasicTimer _timer;
 };
 
 #endif // VIEWER_HPP

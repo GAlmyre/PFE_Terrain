@@ -68,8 +68,7 @@ private:
   void updateViewMatrix();
 
 private:
-  // Camera Perspective
-  float m_screenRatio;
+  // FreeFlyCamera Perspective
   float m_width;
   float m_height;
   float m_near;
@@ -80,7 +79,7 @@ private:
   Eigen::Matrix4f m_ProjectionMatrix;
   Eigen::Affine3f m_viewMatrix;
 
-  // Camera world coordinates
+  // FreeFlyCamera world coordinates
   Eigen::Vector3f m_position;
   Eigen::Vector3f m_worldUp = Eigen::Vector3f(0.f, 1.f, 0.f);
   Eigen::Vector3f m_direction;
@@ -90,7 +89,7 @@ private:
   // State
 
 
-  // Camera movements
+  // FreeFlyCamera movements
   float m_speed = 0.3;
   float m_sensitivity = 0.05;
   Direction m_move;

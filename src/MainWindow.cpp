@@ -4,6 +4,7 @@
 #include "ui_MainWindow.h"
 
 #include <Viewer.h>
+#include <iostream>
 
 MainWindow::MainWindow(QWidget *parent) :
   QMainWindow(parent),
@@ -13,9 +14,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
   _viewer = new Viewer(this);
 
+  statusBar()->showMessage("Hello !");
   createActions();
   createMenu();
   setWindowTitle(tr("TerrainTintin"));
+
+  connect(_viewer, &Viewer::fpsChanged, [&](float fps) {
+    statusBar()->showMessage(QString::number(std::floor(fps)) + " fps"); });
 
   this->setCentralWidget(_viewer);
 }
