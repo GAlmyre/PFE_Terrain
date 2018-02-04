@@ -69,7 +69,6 @@ private:
 
 private:
   // Camera Perspective
-  float m_screenRatio;
   float m_width;
   float m_height;
   float m_near;

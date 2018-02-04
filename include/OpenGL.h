@@ -3,7 +3,6 @@
 
 #include <QtOpenGL>
 #include <QOpenGLFunctions_4_3_Core>
-#include <iostream>
 
 using GLFuncs = QOpenGLFunctions_4_3_Core;
 
