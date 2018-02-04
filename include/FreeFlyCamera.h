@@ -33,9 +33,14 @@ public:
     KEY_DOWN,
   } Key;
 
+  FreeFlyCamera();
   // Constructor with vectors
   FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height);
 
+  // Set position of camera
+  void setPosition(const Eigen::Vector3f &position);
+  // Set camera direction
+  void setDirection(const Eigen::Vector3f &direction);
   // Set perspective constants (fovY : vertical field of view (in radian))
   void setPerspective(float fovY, float near, float far);
   // Set Viewport

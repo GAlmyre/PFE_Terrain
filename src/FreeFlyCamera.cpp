@@ -4,6 +4,16 @@
 
 using namespace Eigen;
 
+FreeFlyCamera::FreeFlyCamera()
+  : m_position(Vector3f::Zero()), m_direction(Vector3f::UnitZ()), m_yaw(0), m_pitch(0), m_width(800), m_height(600)
+  , m_fovy(M_PI / 3.f), m_near(0.1), m_far(50000)
+{
+  m_viewMatrix.setIdentity();
+
+  updateProjectionMatrix();
+  initOffsetBuffer();
+}
+
 FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height)
 {
   m_viewMatrix.setIdentity();
@@ -23,6 +33,14 @@ FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vecto
 
   updateProjectionMatrix();
   initOffsetBuffer();
+}
+
+void FreeFlyCamera::setPosition(const Vector3f &position) {
+  m_position = position;
+}
+
+void FreeFlyCamera::setDirection(const Vector3f &direction) {
+  m_direction = -direction;
 }
 
 void FreeFlyCamera::setPerspective(float fovY, float near, float far) {
@@ -340,5 +358,4 @@ Vector2f FreeFlyCamera::getSmoothMouseOffset()
   }
   return offset;
 }
-
 

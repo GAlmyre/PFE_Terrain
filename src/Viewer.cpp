@@ -84,15 +84,17 @@ void Viewer::paintGL(){
   _simplePrg->bind();
   //_simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), QMatrix4x4(_camera->projectionMatrix().data()).transposed());
   //_simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), QMatrix4x4(_camera->viewMatrix().data()).transposed());
-  //_funcs->glDepthFunc(GL_LESS);
+  _funcs->glDepthFunc(GL_LESS);
   _simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), projMat);
   _simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), viewMat);
   _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(1,0,0));
+  _funcs->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   //_simplePrg->setUniformValue(_simplePrg->uniformLocation("world_mat"), QMatrix4x4(_mesh.worldMatrix().data()).transposed());
   _mesh.draw(*_simplePrg);
 
   _funcs->glDepthFunc(GL_LEQUAL);
   _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(0,1,0));
+  _funcs->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   _mesh.draw(*_simplePrg);
 
   _simplePrg->release();
