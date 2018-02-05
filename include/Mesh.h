@@ -31,6 +31,7 @@ class Mesh
 
   void createGrid(float width, float height, int nbRows, int nbColumns, bool quads);
   void clear();
+  void clean();
 
   Eigen::Matrix4f worldMatrix();
  protected:

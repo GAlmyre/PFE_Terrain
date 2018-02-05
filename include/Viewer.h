@@ -6,6 +6,7 @@
 #include <OpenGL.h>
 #include <QtWidgets>
 
+#include "Scene.h"
 #include "FreeFlyCamera.h"
 #include "Mesh.h"
 
@@ -62,6 +63,7 @@ private:
   QOpenGLDebugLogger *_debugLogger;
 
   FreeFlyCamera _camera;
+  ScenePtr _scene;
   Mesh _mesh;
 };
 

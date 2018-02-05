@@ -8,17 +8,6 @@ Mesh::Mesh()
 
 Mesh::~Mesh()
 {
-  if(_vertexBuffer != NULL){
-    _vertexBuffer->destroy();
-    delete _vertexBuffer;
-  }
-  if(_indexBuffer != NULL){
-    _indexBuffer->destroy();
-    delete _indexBuffer;
-  }
-
-  _vertexArray.destroy();
-
 }
 
 void Mesh::initVAO() {
@@ -142,6 +131,19 @@ void Mesh::clear()
 
   _vertices.clear();
   _indices.clear();
+}
+
+void Mesh::clean() {
+  if (_vertexBuffer) {
+    _vertexBuffer->destroy();
+    delete _vertexBuffer;
+  }
+  if (_indexBuffer) {
+    _indexBuffer->destroy();
+    delete _indexBuffer;
+  }
+
+  _vertexArray.destroy();
 }
 
 Eigen::Matrix4f Mesh::worldMatrix()
