@@ -8,7 +8,6 @@
 
 #include "Scene.h"
 #include "FreeFlyCamera.h"
-#include "Mesh.h"
 
 // This class will handle the rendering of the VEF it stores using openGL
 class Viewer : public QOpenGLWidget
@@ -46,12 +45,6 @@ private:
   void updateFPSCount();
 
 private:
-  QOpenGLShaderProgram * _shader;
-  QOpenGLShaderProgram * _simplePrg;
-
-  QOpenGLVertexArrayObject _object;
-  QOpenGLBuffer _vertexBufferId;
-  QOpenGLBuffer* _faceBuffer;
   GLFuncs *_funcs;
 
   QTime _time;
@@ -64,7 +57,6 @@ private:
 
   FreeFlyCamera _camera;
   ScenePtr _scene;
-  Mesh _mesh;
 };
 
 #endif // VIEWER_HPP

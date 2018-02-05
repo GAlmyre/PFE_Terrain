@@ -17,7 +17,7 @@ Viewer::Viewer(QWidget *parent)
   // Auto update opengl drawing
   QTimer* timer = new QTimer( this );
   connect(timer, &QTimer::timeout, this, &Viewer::updateScene);
-  timer->start(30);
+  timer->start(5);
 
   // Create Scene
   _scene = std::make_shared<TerrainScene>();

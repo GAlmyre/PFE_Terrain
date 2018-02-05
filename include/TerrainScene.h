@@ -2,6 +2,7 @@
 #define TERRAINTINTIN_TERRAINSCENE_H
 
 #include "Scene.h"
+#include "Mesh.h"
 
 class TerrainScene : public Scene {
 public:

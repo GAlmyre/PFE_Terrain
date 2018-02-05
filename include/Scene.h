@@ -5,7 +5,6 @@
 
 #include "OpenGL.h"
 #include "FreeFlyCamera.h"
-#include "Mesh.h"
 
 class Scene {
 public:
