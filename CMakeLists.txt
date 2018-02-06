@@ -29,6 +29,6 @@ include_directories(ext/eigen3/)
 add_executable(
   TerrainTintin
   ${source_files}
-        include/utils.h include/Scene.h include/TerrainScene.h)
+        include/utils.h include/Scene.h include/TerrainScene.h include/TessTestScene.h)
 
 target_link_libraries(TerrainTintin Qt5::Widgets Qt5::Core Qt5::OpenGL GL)

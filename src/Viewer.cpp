@@ -3,13 +3,14 @@
 #include <iostream>
 
 #include "TerrainScene.h"
+#include "TessTestScene.h"
 
 Viewer::Viewer(QWidget *parent)
   : QOpenGLWidget(parent), _frameNumber(0), _fpsSum(0), _dt(0)
 {
   // Set OpenGL format
   QSurfaceFormat format;
-  format.setVersion(3, 3);
+  format.setVersion(4, 0);
   format.setProfile(QSurfaceFormat::CoreProfile);
   format.setOption(QSurfaceFormat::DebugContext);
   setFormat(format);
@@ -20,7 +21,7 @@ Viewer::Viewer(QWidget *parent)
   timer->start(5);
 
   // Create Scene
-  _scene = std::make_shared<TerrainScene>();
+  _scene = std::make_shared<TessTestScene>();
 }
 
 Viewer::~Viewer(){
