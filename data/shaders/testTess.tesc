@@ -2,26 +2,24 @@
 
 layout(vertices = 3) out;
 
-//in Vertex {
-//    vec3 position;
-//    vec3 color;
-//} In[];
-//
-//out Vertex {
-//    vec3 position;
-//    vec3 color;
-//} Out[];
+in VS_OUT {
+    vec3 color;
+} tcs_in[];
+
+out TCS_OUT {
+    vec3 color;
+} tcs_out[];
 
 #define ID gl_InvocationID
 
 void main() {
     if (gl_InvocationID == 0) {
-        gl_TessLevelInner[0] = 0.0;
-        gl_TessLevelOuter[0] = 0.0;
-        gl_TessLevelOuter[1] = 0.0;
-        gl_TessLevelOuter[2] = 0.0;
+        gl_TessLevelInner[0] = 6.0;
+        gl_TessLevelOuter[0] = 3.0;
+        gl_TessLevelOuter[1] = 3.0;
+        gl_TessLevelOuter[2] = 3.0;
     }
+
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-//    Out[ID].position = In[ID].position;
-//    Out[ID].color = In[ID].color;
+    tcs_out[gl_InvocationID].color = tcs_in[gl_InvocationID].color;
 }

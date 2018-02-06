@@ -2,9 +2,9 @@
 
 layout (triangles, equal_spacing, cw) in;
 
-in VS_OUT {
+in TCS_OUT {
     vec3 color;
-} tes_in[];
+} tcs_in[];
 
 out TES_OUT {
     vec3 color;
@@ -15,7 +15,7 @@ void main(void){
                   (gl_TessCoord.y * gl_in[1].gl_Position) +
                   (gl_TessCoord.z * gl_in[2].gl_Position);
 
-    tes_out.color = (gl_TessCoord.x * tes_in[0].color) +
-                    (gl_TessCoord.y * tes_in[1].color) +
-                    (gl_TessCoord.z * tes_in[2].color);
+    tes_out.color = (gl_TessCoord.x * tcs_in[0].color) +
+                    (gl_TessCoord.y * tcs_in[1].color) +
+                    (gl_TessCoord.z * tcs_in[2].color);
 }

@@ -46,9 +46,9 @@ public:
     if (!program->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/testTess.frag")) {
       qDebug() << program->log();
     }
-//    if (!program->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/testTess.tesc")) {
-//      qDebug() << program->log();
-//    }
+    if (!program->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/testTess.tesc")) {
+      qDebug() << program->log();
+    }
     if (!program->addShaderFromSourceFile(QOpenGLShader::TessellationEvaluation, "../data/shaders/testTess.tese")) {
       qDebug() << program->log();
     }
@@ -57,8 +57,8 @@ public:
     }
 
     _funcs->glPatchParameteri(GL_PATCH_VERTICES, 3);
-    const GLfloat innerLevel[] = { 2 };
-    const GLfloat outerLevel[] = { 1, 1, 1 };
+    const GLfloat innerLevel[] = { 3 };
+    const GLfloat outerLevel[] = { 3, 3, 3 };
     _funcs->glPatchParameterfv(GL_PATCH_DEFAULT_INNER_LEVEL, innerLevel);
     _funcs->glPatchParameterfv(GL_PATCH_DEFAULT_OUTER_LEVEL, outerLevel);
   }
