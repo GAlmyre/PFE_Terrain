@@ -21,7 +21,8 @@ Viewer::Viewer(QWidget *parent)
   timer->start(5);
 
   // Create Scene
-  _scene = std::make_shared<TessTestScene>();
+  //_scene = std::make_shared<TessTestScene>();
+  _scene = std::make_shared<TerrainScene>();
 }
 
 Viewer::~Viewer(){
