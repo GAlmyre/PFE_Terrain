@@ -5,12 +5,12 @@
 #include "TerrainScene.h"
 #include "TessTestScene.h"
 
-Viewer::Viewer(QWidget *parent)
-  : QOpenGLWidget(parent), _frameNumber(0), _fpsSum(0), _dt(0)
+Viewer::Viewer(QMainWindow *parent)
+  : QOpenGLWidget(parent), _frameNumber(0), _fpsSum(0), _dt(0), _mainWindow(parent)
 {
   // Set OpenGL format
   QSurfaceFormat format;
-  format.setVersion(4, 0);
+  format.setVersion(4, 3);
   format.setProfile(QSurfaceFormat::CoreProfile);
   format.setOption(QSurfaceFormat::DebugContext);
   setFormat(format);
@@ -22,6 +22,12 @@ Viewer::Viewer(QWidget *parent)
 
   // Create Scene
   _scene = std::make_shared<TessTestScene>();
+
+  // If a dock is related to the current scene, create it
+  QDockWidget *dock = _scene->getDock();
+  if (dock) {
+    _mainWindow->addDockWidget(Qt::RightDockWidgetArea, dock);
+  }
 }
 
 Viewer::~Viewer(){

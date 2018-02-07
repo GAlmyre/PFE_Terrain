@@ -4,8 +4,9 @@
 #include <QtOpenGL>
 #include <QOpenGLFunctions_3_3_Core>
 #include <QOpenGLFunctions_4_0_Core>
+#include <QOpenGLFunctions_4_3_Core>
 #include <iostream>
 
-using GLFuncs = QOpenGLFunctions_4_0_Core;
+using GLFuncs = QOpenGLFunctions_4_3_Core;
 
 #endif //TERRAINTINTIN_OPENGL_H

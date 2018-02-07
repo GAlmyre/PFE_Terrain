@@ -1,6 +1,6 @@
 #version 400 core
 
-in TES_OUT {
+in VertexData {
     vec3 color;
 } fs_in;
 

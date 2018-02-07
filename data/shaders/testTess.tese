@@ -2,11 +2,11 @@
 
 layout (triangles, equal_spacing, cw) in;
 
-in TCS_OUT {
+in VertexData {
     vec3 color;
 } tcs_in[];
 
-out TES_OUT {
+out VertexData {
     vec3 color;
 } tes_out;
 

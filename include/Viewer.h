@@ -15,7 +15,7 @@ class Viewer : public QOpenGLWidget
   Q_OBJECT
 
 public:
-  explicit Viewer(QWidget *parent = nullptr);
+  explicit Viewer(QMainWindow *parent = nullptr);
   ~Viewer();
 
 protected:
@@ -45,6 +45,8 @@ private:
   void updateFPSCount();
 
 private:
+  QMainWindow *_mainWindow;
+
   GLFuncs *_funcs;
 
   QTime _time;

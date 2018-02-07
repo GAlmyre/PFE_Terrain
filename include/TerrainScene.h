@@ -19,33 +19,33 @@ public:
 
     _mesh.createGrid(10,10,10,20, false);
 
-    _funcs->glClearColor(0.2, 0.2, 0.2, 1.0);
-    _funcs->glEnable(GL_BLEND);
-    _funcs->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    _funcs->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    _f->glClearColor(0.2, 0.2, 0.2, 1.0);
+    _f->glEnable(GL_BLEND);
+    _f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   }
 
   void render() override {
-    _funcs->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
     _simplePrg->bind();
     //_simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), QMatrix4x4(_camera->projectionMatrix().data()).transposed());
     //_simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), QMatrix4x4(_camera->viewMatrix().data()).transposed());
-    _funcs->glDepthFunc(GL_LESS);
+    _f->glDepthFunc(GL_LESS);
 //  _simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), projMat);
     //_simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), viewMat);
 
-    _funcs->glUniformMatrix4fv(_simplePrg->uniformLocation("view_mat"), 1, GL_FALSE, _camera->viewMatrix().data());
-    _funcs->glUniformMatrix4fv(_simplePrg->uniformLocation("proj_mat"), 1, GL_FALSE, _camera->projectionMatrix().data());
+    _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view_mat"), 1, GL_FALSE, _camera->viewMatrix().data());
+    _f->glUniformMatrix4fv(_simplePrg->uniformLocation("proj_mat"), 1, GL_FALSE, _camera->projectionMatrix().data());
 
     _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(1,0,0));
-    _funcs->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     //_simplePrg->setUniformValue(_simplePrg->uniformLocation("world_mat"), QMatrix4x4(_mesh.worldMatrix().data()).transposed());
     _mesh.draw(*_simplePrg);
 
-    _funcs->glDepthFunc(GL_LEQUAL);
+    _f->glDepthFunc(GL_LEQUAL);
     _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(0,1,0));
-    _funcs->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     _mesh.draw(*_simplePrg);
 
     _simplePrg->release();
