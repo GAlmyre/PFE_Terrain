@@ -8,19 +8,22 @@ using namespace Eigen;
 
 FreeFlyCamera::FreeFlyCamera()
   : m_position(Vector3f::Zero()), m_direction(Vector3f::UnitZ()), m_yaw(0), m_pitch(0), m_width(800), m_height(600)
-  , m_fovy(M_PI / 3.f), m_near(0.1), m_far(50000)
+  , m_fovy(M_PI / 3.f), m_near(0.1), m_far(50000), m_mouseOffset(Vector2f(0.f, 0.f))
 {
   m_viewMatrix.setIdentity();
   setDirection(m_direction);
 
   updateProjectionMatrix();
   initOffsetBuffer();
+
 }
 
 FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height)
 {
   m_viewMatrix.setIdentity();
 
+  m_mouseOffset = Vector2f(0.f, 0.f);
+  
   m_position = position;
   setDirection(direction);
 
