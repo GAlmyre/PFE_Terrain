@@ -2,7 +2,7 @@
 #define TERRAINTINTIN_TERRAINSCENE_H
 
 #include "Scene.h"
-#include "Mesh.h"
+#include "Terrain.h"
 
 class TerrainScene : public Scene {
 public:
@@ -16,8 +16,6 @@ public:
     _camera->setPosition(Eigen::Vector3f(0,10,-5));
     _camera->setDirection(-Eigen::Vector3f(0,10,-5));
     _camera->setViewport(600, 400);
-
-    _mesh.createGrid(10,10,10,20, false);
 
     _f->glClearColor(0.2, 0.2, 0.2, 1.0);
     _f->glEnable(GL_BLEND);
@@ -40,13 +38,13 @@ public:
 
     _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(1,0,0));
     _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    //_simplePrg->setUniformValue(_simplePrg->uniformLocation("world_mat"), QMatrix4x4(_mesh.worldMatrix().data()).transposed());
-    _mesh.draw(*_simplePrg);
+    //_simplePrg->setUniformValue(_simplePrg->uniformLocation("world_mat"), QMatrix4x4(_terrain.worldMatrix().data()).transposed());
+    _terrain.draw(*_simplePrg);
 
     _f->glDepthFunc(GL_LEQUAL);
     _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(0,1,0));
     _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    _mesh.draw(*_simplePrg);
+    _terrain.draw(*_simplePrg);
 
     _simplePrg->release();
   }
@@ -57,12 +55,12 @@ public:
 
   void clean() override {
     delete _simplePrg;
-    _mesh.clean();
+    _terrain.clean();
   }
 
 private:
   QOpenGLShaderProgram * _simplePrg;
-  Mesh _mesh;
+  Terrain _terrain;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H

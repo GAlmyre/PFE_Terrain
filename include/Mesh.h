@@ -8,6 +8,7 @@
 
 class Mesh
 {
+ protected:
   struct Vertex
   {
   Vertex()
@@ -29,7 +30,6 @@ class Mesh
 
   virtual void draw(QOpenGLShaderProgram &shader);
 
-  void createGrid(float width, float height, int nbRows, int nbColumns, bool quads);
   void clear();
   void clean();
 

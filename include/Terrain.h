@@ -4,9 +4,11 @@
 #include <QOpenGLShaderProgram>
 #include <QImage>
 
+#include "surface_mesh/surface_mesh.h"
+
 #include "Mesh.h"
 
-class Terrain
+class Terrain : public Mesh
 {
 
  public:
@@ -14,22 +16,25 @@ class Terrain
 
   void setHeightMap(const QImage& heightmap);
   void setTexture(const QImage&  texture);
-
-  void drawBaseMesh(QOpenGLShaderProgram &shader);
+  
   void drawHardwareTessellation();
   void drawPatchInstanciation();
 
   void updateBaseMesh();
   
  private:
-  //TODO replace int by the correct type we will use for these
   QImage _heightMap;
   QImage _texture;
   unsigned int _pixelsPerPatch;
   bool _quadPatches;
 
+ public:
+  void createGrid(float width, float height, unsigned int nb_rows, unsigned int nb_columns, bool quads);
+ private:
+  void fillMeshBuffers();
+
   //hardware tessellation
-  Mesh _baseMesh;
+  surface_mesh::Surface_mesh _baseMesh;
 
   //instanciation of tessellated patches
   /*

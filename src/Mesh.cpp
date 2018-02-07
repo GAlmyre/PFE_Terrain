@@ -75,53 +75,6 @@ void Mesh::draw(QOpenGLShaderProgram &shader){
   _vertexArray.release();
 }
 
-void Mesh::createGrid(float width, float height, int nbRows, int nbColumns, bool quads)
-{
-  //nbRows = 1;
-  //nbColumns = 1;
-  //1st step : creating all the vertices
-  for(int i=0; i < nbRows+1; ++i)
-    for(int j=0; j < nbColumns+1; ++j){
-      float normPos_i = (float)i/nbRows, normPos_j = (float)j/nbColumns;
-      _vertices.push_back(Vertex(Eigen::Vector3f(normPos_i*width, 0, normPos_j*height),
-				 Eigen::Vector3f(0, 1, 0),
-				 Eigen::Vector2f(normPos_i,normPos_j)));
-    }
-  //2nd step : creating all the faces
-  int nbCells = nbRows*nbColumns;
-  int lineOffset = -1;
-  for(int i=0; i < nbCells; ++i){
-    if(i%nbColumns==0)
-      lineOffset++;
-    int p1, p2, p3, p4;
-    /* we get p1 p2 p3 p4 the indices of the vertices of the ith quad patch 
-       p1 --- p2
-       |      |
-       |      |
-       p3 --- p4
-     */
-    p1 = i+lineOffset;
-    p2 = p1+1;
-    p3 = p1+nbColumns+1;
-    p4 = p3+1;
-    if(quads){
-      _indices.push_back((unsigned int)p1);
-      _indices.push_back((unsigned int)p3);
-      _indices.push_back((unsigned int)p4);
-      _indices.push_back((unsigned int)p2);
-    }
-    else{
-      //split the quad into two triangles
-      _indices.push_back((unsigned int)p1);
-      _indices.push_back((unsigned int)p3);
-      _indices.push_back((unsigned int)p2);
-      _indices.push_back((unsigned int)p2);
-      _indices.push_back((unsigned int)p3);
-      _indices.push_back((unsigned int)p4);
-    }
-  }  
-}
-
 void Mesh::clear()
 {
   _updateWorldMat = true;

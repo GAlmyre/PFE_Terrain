@@ -25,7 +25,7 @@ public:
   }
   virtual void clean() = 0;
 
-  virtual QDockWidget *createDock() { _dock = nullptr; };
+  virtual QDockWidget *createDock() { return nullptr; };
 protected:
   GLFuncs *_f;
   FreeFlyCamera *_camera;
