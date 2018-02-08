@@ -45,7 +45,8 @@ void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
   model.setToIdentity();
 
   shader.setUniformValue(shader.uniformLocation("model"), model);
-  _heightMapTexture->bind();
+  _heightMap->bind(0);
+  shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
 
   _vertexArray.bind();
   _vertexBuffer->bind();
@@ -209,4 +210,10 @@ void Terrain::fillMeshBuffers()
 	_indices.push_back(v2.idx());
       } while (++fvit != fvend);
     }
+}
+
+void Terrain::clean() {
+  Mesh::clean();
+  if (_heightMap) delete _heightMap;
+  if (_texture) delete _texture;
 }

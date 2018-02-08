@@ -32,8 +32,8 @@ public:
     _viewLoc = _f->glGetProgramResourceLocation(_tessPrg->programId(), GL_UNIFORM, "view");
     _projectionLoc = _f->glGetProgramResourceLocation(_tessPrg->programId(), GL_UNIFORM, "projection");
 
-    _camera->setPosition(Eigen::Vector3f(0,10,-5));
-    _camera->setDirection(-Eigen::Vector3f(0,10,-5));
+    _camera->setPosition(Eigen::Vector3f(0,30,-5));
+    _camera->setDirection(Eigen::Vector3f(5,-2,5));
     _camera->setViewport(600, 400);
 
     _f->glClearColor(0.2, 0.2, 0.2, 1.0);
@@ -83,9 +83,9 @@ private:
   GLint _outerTessLoc;
   GLint _heightScaleLoc;
 
-  float TessLevelInner = 4.f;
-  float TessLevelOuter[3] = { 3.f, 3.f, 3.f };
-  float _heightScale = 1.f;
+  float TessLevelInner = 10.f;
+  float TessLevelOuter[3] = { 6.f, 6.f, 6.f };
+  float _heightScale = 60.f;
 };
 
 #endif //TERRAINTINTIN_TESSTERRAINSCENE_H

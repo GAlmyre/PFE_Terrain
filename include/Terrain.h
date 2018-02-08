@@ -16,7 +16,8 @@ class Terrain : public Mesh
 
   void setHeightMap(const QImage& heightmap);
   void setTexture(const QImage&  texture);
-  
+
+  void draw(QOpenGLShaderProgram &shader);
   void drawHardwareTessellation(QOpenGLShaderProgram &shader);
   void drawPatchInstanciation();
 

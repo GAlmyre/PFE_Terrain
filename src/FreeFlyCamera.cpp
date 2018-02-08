@@ -56,7 +56,7 @@ void FreeFlyCamera::setDirection(const Vector3f &direction) {
   if (radToDeg(m_pitch) < -89.0f)
     m_pitch = degToRad(-89.0f);
 
-  m_yaw = asin(m_direction.z() / cos(m_pitch));
+  m_yaw = atan2(m_direction.z(), m_direction.x());
   updateViewMatrix();
 
 }

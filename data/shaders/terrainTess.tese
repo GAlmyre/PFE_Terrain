@@ -24,7 +24,8 @@ void main(void){
                     (gl_TessCoord.y * tcs_in[1].texcoord) +
                     (gl_TessCoord.z * tcs_in[2].texcoord);
 
-    float displacement = texture(heightmap, texcoord).r * heightScale;
+    vec3 pick = texture(heightmap, texcoord).rgb;
+    float displacement = (pick.r + pick.g + pick.b) / 3.f * heightScale;
 
     // Interpolate position and apply displacement to y axis
     vec4 position = (gl_TessCoord.x * gl_in[0].gl_Position) +

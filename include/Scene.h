@@ -27,7 +27,7 @@ public:
   virtual void clean() = 0;
 
   virtual QDockWidget *createDock() { return nullptr; };
-  virtual void connectToMainWindow(const MainWindow&) = 0;
+  virtual void connectToMainWindow(const MainWindow&) { };
 protected:
   GLFuncs *_f;
   FreeFlyCamera *_camera;
