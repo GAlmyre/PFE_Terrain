@@ -36,9 +36,8 @@ class TerrainScene : public Scene {
     _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
     _camera->setViewport(600, 400);
 
+    _f->glEnable(GL_DEPTH_TEST);
     _f->glClearColor(0.2, 0.2, 0.2, 1.0);
-    _f->glEnable(GL_BLEND);
-    _f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     //_f->glPatchParameteri(GL_PATCH_VERTICES, 3);
@@ -47,7 +46,7 @@ class TerrainScene : public Scene {
   void render() override {
     
     _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
+    
     if(_tessellationMethod == TessellationMethod::NO_TESSELLATION)
       {
 	_simplePrg->bind();
