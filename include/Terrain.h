@@ -17,6 +17,8 @@ class Terrain : public Mesh
   void setHeightMap(const QImage& heightmap);
   void setTexture(const QImage&  texture);
 
+  Eigen::Vector2f getSize();
+
   void draw(QOpenGLShaderProgram &shader);
   void drawHardwareTessellation(QOpenGLShaderProgram &shader);
   void drawPatchInstanciation();
@@ -29,6 +31,7 @@ class Terrain : public Mesh
   QOpenGLTexture *_texture = nullptr;
   unsigned int _pixelsPerPatch;
   bool _quadPatches;
+  int _width, _height;
 
  public:
   void createGrid(float width, float height, unsigned int nb_rows, unsigned int nb_columns, bool quads);

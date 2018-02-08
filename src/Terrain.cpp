@@ -6,7 +6,7 @@ using namespace surface_mesh;
 using namespace Eigen;
 
 Terrain::Terrain()
-  : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr)
+  : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr), _width(0), _height(0)
 {
   updateBaseMesh();
 }
@@ -24,6 +24,10 @@ void Terrain::setTexture(const QImage& texture)
   _texture = new QOpenGLTexture(texture.mirrored());
   _texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
   _texture->setMagnificationFilter(QOpenGLTexture::Linear);
+}
+
+Eigen::Vector2f Terrain::getSize() {
+  return Eigen::Vector2f(_width, _height);
 }
 
 void Terrain::draw(QOpenGLShaderProgram &shader){
@@ -103,25 +107,29 @@ void Terrain::updateBaseMesh()
   std::cout << "updateBaseMesh" << std::endl;
   //if we already loaded a height map
   if(_heightMap)
-    {
-      std::cout << "updateBaseMesh image loaded" << std::endl;
-      int w,h,gridw, gridh;
-      w = _heightMap->width();
-      h = _heightMap->height();
-      gridw = w/_pixelsPerPatch;
-      gridh = h/_pixelsPerPatch;
-      if(w%_pixelsPerPatch)
-	gridw++;
-      if(h%_pixelsPerPatch)
-	gridh++;
-      createGrid(w, h, gridw, gridh, false);
-    }
+  {
+    std::cout << "updateBaseMesh image loaded" << std::endl;
+    int w,h,gridw, gridh;
+    w = _heightMap->width();
+    h = _heightMap->height();
+    gridw = w/_pixelsPerPatch;
+    gridh = h/_pixelsPerPatch;
+    if(w%_pixelsPerPatch)
+      gridw++;
+    if(h%_pixelsPerPatch)
+      gridh++;
+    createGrid(w, h, gridw, gridh, false);
+    _width = w;
+    _height = h;
+  }
   else
-    {
-      //for debug purpose only we create a grid without height map
-      //should clear the mesh instead
-      createGrid(5,5,10,10, false);
-    }
+  {
+    //for debug purpose only we create a grid without height map
+    //should clear the mesh instead
+    createGrid(5,5,10,10, false);
+    _width = 5;
+    _height = 5;
+  }
 }
 
 void Terrain::createGrid(float width, float height, unsigned int nbRows, unsigned int nbColumns, bool quads)
