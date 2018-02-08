@@ -4,6 +4,8 @@
 #include "Scene.h"
 #include "Terrain.h"
 
+using namespace Eigen;
+
 class TerrainScene : public Scene {
  public:
 
@@ -14,47 +16,96 @@ class TerrainScene : public Scene {
   enum TessellationMode {CONSTANT, ADAPTATIVE_FROM_POV, ADAPTATIVE_FROM_FIXED_POINT};
   
   void initialize() override {
+    _terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
+    _terrain.setTexture(QImage("../data/textures/rainbow.png"));
+    
     //shader init
     _simplePrg = new QOpenGLShaderProgram();
     _simplePrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
     _simplePrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/simple.frag");
     _simplePrg->link();
 
-    _camera->setPosition(Eigen::Vector3f(0,10,-5));
-    _camera->setDirection(-Eigen::Vector3f(0,10,-5));
+    _simpleTessPrg = new QOpenGLShaderProgram();
+    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
+    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/simple.frag");
+    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/simpleTess.tesc");
+    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationEvaluation, "../data/shaders/simpleTess.tese");
+    _simpleTessPrg->link();
+
+    _camera->setPosition(Eigen::Vector3f(10, 100, 10));
+    _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
     _camera->setViewport(600, 400);
 
     _f->glClearColor(0.2, 0.2, 0.2, 1.0);
     _f->glEnable(GL_BLEND);
     _f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    //_f->glPatchParameteri(GL_PATCH_VERTICES, 3);
   }
 
   void render() override {
+    
     _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-    _simplePrg->bind();
+    if(_tessellationMethod == TessellationMethod::NO_TESSELLATION)
+      {
+	_simplePrg->bind();
+    
+	_f->glUniformMatrix4fv(_simplePrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
+	_f->glUniformMatrix4fv(_simplePrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+	if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
+	  _f->glDepthFunc(GL_LESS);
+	  _simplePrg->setUniformValue(_simplePrg->uniformLocation("wireframe"), false);
+	  _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(1,0,0));
+	  _simplePrg->setUniformValue(_simplePrg->uniformLocation("texturing_mode"), _texMode);
+	  _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	  _terrain.draw(*_simplePrg);
+	}
 
-    _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view_mat"), 1, GL_FALSE, _camera->viewMatrix().data());
-    _f->glUniformMatrix4fv(_simplePrg->uniformLocation("proj_mat"), 1, GL_FALSE, _camera->projectionMatrix().data());
+	if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
+	  _f->glDepthFunc(GL_LEQUAL);
+	  _simplePrg->setUniformValue(_simplePrg->uniformLocation("wireframe"), true);
+	  _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(0,1,0));
+	  _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	  _terrain.draw(*_simplePrg);
+	}
+	_simplePrg->release();
+      }
+    else if(_tessellationMethod == TessellationMethod::HARDWARE){
+      _simpleTessPrg->bind();
 
-    if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
-      _f->glDepthFunc(GL_LESS);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("wireframe"), false);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(1,0,0));
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("texturing_mode"), _texMode);
-      _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-      _terrain.draw(*_simplePrg);
+      _f->glUniformMatrix4fv(_simpleTessPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
+      _f->glUniformMatrix4fv(_simpleTessPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+      
+      _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
+      
+      _f->glUniform1f(_simpleTessPrg->uniformLocation("TessLevelInner"), 5.);
+      _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, Vector3f(3.,3.,3.).data());
+      _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), 50.);
+      
+      if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
+	_f->glDepthFunc(GL_LESS);
+	_simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("wireframe"), false);
+	_simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("v_color"), QVector3D(1,0,0));
+	_simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("texturing_mode"), _texMode);
+	_f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	_terrain.drawHardwareTessellation(*_simpleTessPrg);
+      }
+      
+      if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
+	_f->glDepthFunc(GL_LEQUAL);
+	_simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("wireframe"), true);
+	_simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("v_color"), QVector3D(0,1,0));
+	_f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	_terrain.drawHardwareTessellation(*_simpleTessPrg);
+      }
+      
+      _simpleTessPrg->release();
     }
+    else{
 
-    if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
-      _f->glDepthFunc(GL_LEQUAL);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("wireframe"), true);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(0,1,0));
-      _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      _terrain.draw(*_simplePrg);
     }
-    _simplePrg->release();
   }
 
   void update(float dt) override {
@@ -233,18 +284,19 @@ class TerrainScene : public Scene {
     
   virtual void connectToMainWindow(const MainWindow& mw){
     QObject::connect(&mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedHeightMap),
-    [this](const QImage& im) {
-    this->_terrain.setHeightMap(im);
-    });
+		     [this](const QImage& im) {
+		       this->_terrain.setHeightMap(im);
+		     });
 
     QObject::connect(&mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedTexture),
-    [this](const QImage& im) {
-    this->_terrain.setTexture(im);
-    });
+		     [this](const QImage& im) {
+		       this->_terrain.setTexture(im);
+		     });
   }
 
  private:
   QOpenGLShaderProgram * _simplePrg;
+  QOpenGLShaderProgram * _simpleTessPrg;
   Terrain _terrain;
   
   TexturingMode _texMode = TexturingMode::CONST_COLOR;

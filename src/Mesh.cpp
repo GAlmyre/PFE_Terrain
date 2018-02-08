@@ -33,11 +33,9 @@ void Mesh::draw(QOpenGLShaderProgram &shader){
   if(!_initialized)
     initVAO();
 
-  //Eigen::Matrix4f worldMat = this->worldMatrix();
-  //shader.setUniformValue(shader.uniformLocation("world_mat"), QMatrix4x4(worldMat.data()).transposed());//*(worldMat.data()));
   QMatrix4x4 worldMat;
   worldMat.setToIdentity();
-  shader.setUniformValue(shader.uniformLocation("world_mat"), worldMat);
+  shader.setUniformValue(shader.uniformLocation("model"), worldMat);
   _vertexArray.bind();
   _vertexBuffer->bind();
   _indexBuffer->bind();

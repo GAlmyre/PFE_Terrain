@@ -29,13 +29,17 @@ void Terrain::setTexture(const QImage& texture)
 void Terrain::draw(QOpenGLShaderProgram &shader){
   if(_heightMap){
     _heightMap->bind(0);
-    shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   }
   if(_texture){
     _texture->bind(1);
-    shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
   }
+  shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
+  shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
   Mesh::draw(shader);
+  if(_heightMap)
+    _heightMap->release();
+  if(_texture)
+    _texture->release();
 }
 
 void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
@@ -49,9 +53,12 @@ void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
   model.setToIdentity();
 
   shader.setUniformValue(shader.uniformLocation("model"), model);
-  _heightMap->bind(0);
+  if(_heightMap)
+    _heightMap->bind(0);
+  if(_texture)
+    _texture->bind(1);
   shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
-
+  shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
   _vertexArray.bind();
   _vertexBuffer->bind();
   _indexBuffer->bind();
@@ -79,6 +86,11 @@ void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
   _indexBuffer->release();
   _vertexBuffer->release();
   _vertexArray.release();
+
+  if(_heightMap)
+    _heightMap->release();
+  if(_texture)
+    _texture->release();
 }
 void Terrain::drawPatchInstanciation()
 {

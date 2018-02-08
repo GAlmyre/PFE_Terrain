@@ -1,4 +1,4 @@
-#version 330 core
+#version 400 core
 
 uniform sampler2D heightmap;
 uniform sampler2D texturemap;
@@ -8,8 +8,9 @@ uniform int texturing_mode;
 
 uniform bool wireframe;
 
-in vec3 v_normal;
-in vec2 v_texcoord;
+in FragData {
+  vec2 texcoord;
+} fs_in;
 
 out vec4 out_color;
 
@@ -27,16 +28,16 @@ void main(void) {
     case TEXTURING_MODE_CONST_COLOR:
       break;
     case TEXTURING_MODE_TEXTURE:
-      out_color = vec4(texture(texturemap, v_texcoord.xy).xyz, 1.);
+      out_color = vec4(texture(texturemap, fs_in.texcoord.xy).xyz, 1.);
       break;
     case TEXTURING_MODE_HEIGHTMAP:      
-      out_color = vec4(texture(heightmap, v_texcoord.xy).xyz, 1.);
+      out_color = vec4(texture(heightmap, fs_in.texcoord.xy).xyz, 1.);
       break;
     case TEXTURING_MODE_NORMALS:
       out_color = vec4(0.,1.,1.,1.);
       break;
     case TEXTURING_MODE_TEXCOORDS:
-      out_color = vec4(v_texcoord.x, 0., v_texcoord.y, 1.);
+      out_color = vec4(fs_in.texcoord.x, 0., fs_in.texcoord.y, 1.);
       break;
     } 
   }
