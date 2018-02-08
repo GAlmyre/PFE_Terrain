@@ -6,25 +6,32 @@ using namespace surface_mesh;
 using namespace Eigen;
 
 Terrain::Terrain()
-  : _pixelsPerPatch(64), _quadPatches(false), _heightMapTexture(nullptr)
+  : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr)
 {
   updateBaseMesh();
 }
 
 void Terrain::setHeightMap(const QImage& heightMap)
 {
-  _heightMap = heightMap;
+  _heightMap = new QOpenGLTexture(heightMap.mirrored());
+  _heightMap->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
+  _heightMap->setMagnificationFilter(QOpenGLTexture::Linear);
   updateBaseMesh();
-
-  if (_heightMapTexture) delete _heightMapTexture;
-  _heightMapTexture = new QOpenGLTexture(_heightMap.mirrored(), QOpenGLTexture::DontGenerateMipMaps);
-  _heightMapTexture->setMinificationFilter(QOpenGLTexture::Linear);
-  _heightMapTexture->setMagnificationFilter(QOpenGLTexture::Linear);
 }
 
 void Terrain::setTexture(const QImage& texture)
 {
-  _texture = texture;
+  _texture = new QOpenGLTexture(texture.mirrored());
+  _texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
+  _texture->setMagnificationFilter(QOpenGLTexture::Linear);
+}
+
+void Terrain::draw(QOpenGLShaderProgram &shader){
+  if(_heightMap){
+    _heightMap->bind(0);
+    shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
+  }
+  Mesh::draw(shader);
 }
 
 void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
@@ -76,12 +83,14 @@ void Terrain::drawPatchInstanciation()
 //updates the base mesh grid with the correct size according to the height map's size and the patchSize
 void Terrain::updateBaseMesh()
 {
+  std::cout << "updateBaseMesh" << std::endl;
   //if we already loaded a height map
-  if(!_heightMap.isNull())
+  if(_heightMap)
     {
+      std::cout << "updateBaseMesh image loaded" << std::endl;
       int w,h,gridw, gridh;
-      w = _heightMap.width();
-      h = _heightMap.height();
+      w = _heightMap->width();
+      h = _heightMap->height();
       gridw = w/_pixelsPerPatch;
       gridh = h/_pixelsPerPatch;
       if(w%_pixelsPerPatch)
@@ -163,7 +172,7 @@ void Terrain::fillMeshBuffers()
   _initialized = false;
   Surface_mesh::Vertex_property<Vector3f> vertices = _baseMesh.get_vertex_property<Vector3f>("v:point");
   Surface_mesh::Vertex_property<Vector3f> vnormals = _baseMesh.get_vertex_property<Vector3f>("v:normal");
-  Surface_mesh::Vertex_property<Vector2f> texcoords = _baseMesh.get_vertex_property<Vector2f>("v:texcoord");
+  Surface_mesh::Vertex_property<Vector2f> texcoords = _baseMesh.get_vertex_property<Vector2f>("v:texcoords");
   
   Surface_mesh::Vertex_iterator vit;
   
@@ -200,9 +209,4 @@ void Terrain::fillMeshBuffers()
 	_indices.push_back(v2.idx());
       } while (++fvit != fvend);
     }
-}
-
-void Terrain::clean() {
-  Mesh::clean();
-  if (_heightMapTexture) delete _heightMapTexture;
 }

@@ -22,11 +22,10 @@ class Terrain : public Mesh
 
   void updateBaseMesh();
   void clean();
-  
+
  private:
-  QImage _heightMap;
-  QImage _texture;
-  QOpenGLTexture *_heightMapTexture;
+  QOpenGLTexture *_heightMap = nullptr;
+  QOpenGLTexture *_texture = nullptr;
   unsigned int _pixelsPerPatch;
   bool _quadPatches;
 

@@ -96,6 +96,9 @@ void MainWindow::loadHeightMap() {
   QString fileExtension = fileInfo.suffix();
 
   std::cout << "opened heightmap file :" << fileName.toStdString() << '\n';
+  QImage heightmap;
+  heightmap.load(fileName);
+  emit loadedHeightMap(heightmap);
 }
 
 // Handles the opening of a texture

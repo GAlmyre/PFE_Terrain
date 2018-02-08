@@ -6,6 +6,7 @@
 
 #include "OpenGL.h"
 #include "FreeFlyCamera.h"
+#include "MainWindow.h"
 
 class Scene {
 public:
@@ -26,6 +27,7 @@ public:
   virtual void clean() = 0;
 
   virtual QDockWidget *createDock() { return nullptr; };
+  virtual void connectToMainWindow(const MainWindow&) = 0;
 protected:
   GLFuncs *_f;
   FreeFlyCamera *_camera;
