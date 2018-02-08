@@ -31,6 +31,10 @@ void Terrain::draw(QOpenGLShaderProgram &shader){
     _heightMap->bind(0);
     shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   }
+  if(_texture){
+    _texture->bind(1);
+    shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
+  }
   Mesh::draw(shader);
 }
 

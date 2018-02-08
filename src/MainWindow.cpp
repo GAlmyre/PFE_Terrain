@@ -110,6 +110,9 @@ void MainWindow::loadTexture() {
   QString fileExtension = fileInfo.suffix();
 
   std::cout << "opened texture file :" << fileName.toStdString() << '\n';
+  QImage texture;
+  texture.load(fileName);
+  emit loadedTexture(texture);
 }
 
 void MainWindow::toggleFog() {

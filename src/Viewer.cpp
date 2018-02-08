@@ -22,7 +22,8 @@ Viewer::Viewer(QMainWindow *parent)
   timer->start(5);
 
   // Create Scene
-  _scene = std::make_shared<TessTerrainScene>();
+  _scene = std::make_shared<TerrainScene>();
+  //_scene = std::make_shared<TessTerrainScene>();
   //_scene = std::make_shared<TessTestScene>();
 
   // If a dock is related to the current scene, create it
