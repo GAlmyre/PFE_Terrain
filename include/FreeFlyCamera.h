@@ -45,6 +45,8 @@ public:
   void setPerspective(float fovY, float near, float far);
   // Set Viewport
   void setViewport(int width, int height);
+  // Set speed
+  void setSpeed(float speed);
   //Centre la caméra sur une bounding box
   void centerOnAABB(const Eigen::AlignedBox<float, 3> &bBox, const Eigen::Vector3f &dir = Eigen::Vector3f(0., 0., 0.));
 

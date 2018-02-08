@@ -72,6 +72,10 @@ void FreeFlyCamera::setViewport(int width, int height) {
   updateProjectionMatrix();
 }
 
+void FreeFlyCamera::setSpeed(float speed) {
+  m_speed = speed;
+}
+
 void FreeFlyCamera::updateProjectionMatrix() {
   m_ProjectionMatrix.setIdentity();
   float aspect = m_width / m_height;
