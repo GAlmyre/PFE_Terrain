@@ -6,7 +6,7 @@ using namespace surface_mesh;
 using namespace Eigen;
 
 Terrain::Terrain()
-  : _pixelsPerPatch(64), _quadPatches(false)
+  : _pixelsPerPatch(64), _quadPatches(false), _heightMapTexture(nullptr)
 {
   updateBaseMesh();
 }
@@ -15,6 +15,11 @@ void Terrain::setHeightMap(const QImage& heightMap)
 {
   _heightMap = heightMap;
   updateBaseMesh();
+
+  if (_heightMapTexture) delete _heightMapTexture;
+  _heightMapTexture = new QOpenGLTexture(_heightMap.mirrored(), QOpenGLTexture::DontGenerateMipMaps);
+  _heightMapTexture->setMinificationFilter(QOpenGLTexture::Linear);
+  _heightMapTexture->setMagnificationFilter(QOpenGLTexture::Linear);
 }
 
 void Terrain::setTexture(const QImage& texture)
@@ -22,9 +27,46 @@ void Terrain::setTexture(const QImage& texture)
   _texture = texture;
 }
 
-void Terrain::drawHardwareTessellation()
+void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
 {
-  std::cout << "Terrain::drawHardwareTessellation not implemented yet." << std::endl;
+//  std::cout << "Terrain::drawHardwareTessellation not implemented yet." << std::endl;
+  if(!_initialized)
+    initVAO();
+
+  // Set uniforms
+  QMatrix4x4 model;
+  model.setToIdentity();
+
+  shader.setUniformValue(shader.uniformLocation("model"), model);
+  _heightMapTexture->bind();
+
+  _vertexArray.bind();
+  _vertexBuffer->bind();
+  _indexBuffer->bind();
+
+  int vertex_loc = shader.attributeLocation("vtx_position");
+  if(vertex_loc>=0) {
+    shader.setAttributeBuffer(vertex_loc, GL_FLOAT, offsetof(Mesh::Vertex,position), 3, sizeof(Mesh::Vertex));
+    shader.enableAttributeArray(vertex_loc);
+  }
+
+  int normal_loc = shader.attributeLocation("vtx_normal");
+  if(normal_loc>=0) {
+    shader.setAttributeBuffer(normal_loc, GL_FLOAT, offsetof(Mesh::Vertex,normal), 3, sizeof(Mesh::Vertex));
+    shader.enableAttributeArray(normal_loc);
+  }
+
+  int texcoord_loc = shader.attributeLocation("vtx_texcoord");
+  if(texcoord_loc>=0) {
+    shader.setAttributeBuffer(texcoord_loc, GL_FLOAT, offsetof(Mesh::Vertex,texcoord), 2, sizeof(Mesh::Vertex));
+    shader.enableAttributeArray(texcoord_loc);
+  }
+
+  glDrawElements(GL_PATCHES, _indices.size(), GL_UNSIGNED_INT, 0);
+
+  _indexBuffer->release();
+  _vertexBuffer->release();
+  _vertexArray.release();
 }
 void Terrain::drawPatchInstanciation()
 {
@@ -158,4 +200,9 @@ void Terrain::fillMeshBuffers()
 	_indices.push_back(v2.idx());
       } while (++fvit != fvend);
     }
+}
+
+void Terrain::clean() {
+  Mesh::clean();
+  if (_heightMapTexture) delete _heightMapTexture;
 }

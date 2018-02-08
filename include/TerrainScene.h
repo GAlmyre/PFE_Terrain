@@ -27,12 +27,7 @@ public:
     _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
     _simplePrg->bind();
-    //_simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), QMatrix4x4(_camera->projectionMatrix().data()).transposed());
-    //_simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), QMatrix4x4(_camera->viewMatrix().data()).transposed());
     _f->glDepthFunc(GL_LESS);
-//  _simplePrg->setUniformValue(_simplePrg->uniformLocation("proj_mat"), projMat);
-    //_simplePrg->setUniformValue(_simplePrg->uniformLocation("view_mat"), viewMat);
-
     _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view_mat"), 1, GL_FALSE, _camera->viewMatrix().data());
     _f->glUniformMatrix4fv(_simplePrg->uniformLocation("proj_mat"), 1, GL_FALSE, _camera->projectionMatrix().data());
 

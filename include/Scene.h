@@ -30,7 +30,7 @@ protected:
   GLFuncs *_f;
   FreeFlyCamera *_camera;
 private:
-  QDockWidget *_dock = nullptr;
+  QDockWidget *_dock;
 };
 
 using ScenePtr = std::shared_ptr<Scene>;

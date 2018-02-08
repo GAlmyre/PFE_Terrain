@@ -1,6 +1,7 @@
 #include <FreeFlyCamera.h>
 
 #include <iostream>
+#include <algorithm>
 
 #include <utils.h>
 
@@ -15,7 +16,7 @@ FreeFlyCamera::FreeFlyCamera()
 
   updateProjectionMatrix();
   initOffsetBuffer();
-
+  resetKeyStates();
 }
 
 FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height)
@@ -39,6 +40,7 @@ FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vecto
 
   updateProjectionMatrix();
   initOffsetBuffer();
+  resetKeyStates();
 }
 
 void FreeFlyCamera::setPosition(const Vector3f &position) {
@@ -165,46 +167,21 @@ void FreeFlyCamera::centerOnAABB(const AlignedBox<float, 3> &bBox, const Vector3
 
 void FreeFlyCamera::update(float dt)
 {
-  float dist = m_speed * dt;
+  // Update Position
+  Vector3f dir = Vector3f::Zero();
+  if (m_keyStates[KEY_FORWARD])  dir += direction();
+  if (m_keyStates[KEY_BACKWARD]) dir -= direction();
+  if (m_keyStates[KEY_RIGHT])    dir += right();
+  if (m_keyStates[KEY_LEFT])     dir -= right();
+  if (m_keyStates[KEY_UP])       dir += m_worldUp;
+  if (m_keyStates[KEY_DOWN])     dir -= m_worldUp;
 
-  switch (m_move) {
-    case FORWARD:
-      m_position += direction() * dist;
-      break;
-    case BACKWARD:
-      m_position -= direction() * dist;
-      break;
-    case LEFT:
-      m_position -= right() * dist;
-      break;
-    case RIGHT:
-      m_position += right() * dist;
-      break;
-    case FORWARDLEFT:
-      m_position += (- right() * INV_SQRT_TWO * dist + direction() * INV_SQRT_TWO * dist);
-      break;
-    case FORWARDRIGHT:
-      m_position += (right() * INV_SQRT_TWO * dist + direction() * INV_SQRT_TWO * dist);
-      break;
-    case BACKWARDLEFT:
-      m_position += (- right() * INV_SQRT_TWO * dist - direction() * INV_SQRT_TWO * dist);
-      break;
-    case BACKWARDRIGHT:
-      m_position += (right() * INV_SQRT_TWO * dist - direction() * INV_SQRT_TWO * dist);
-      break;
-    case UP:
-      m_position += m_worldUp * dist;
-      break;
-    case DOWN:
-      m_position -= m_worldUp * dist;
-      break;
-    case NONE:
-      break;
-  }
+  if (dir != Vector3f::Zero())
+    m_position += dir.normalized() * m_speed * dt;
 
+  // Update Direction
   updateOffsetBuffer();
   Vector2f offset = getSmoothMouseOffset();
-
   if (offset != Vector2f::Zero()) {
     m_yaw   -= offset.x();
     m_pitch -= offset.y();
@@ -215,101 +192,18 @@ void FreeFlyCamera::update(float dt)
       m_pitch = degToRad(-89.0f);
   }
 
+  // Update View Matrix
   updateViewMatrix();
-
-  m_mouseOffset = Vector2f::Zero();
 }
 
 void FreeFlyCamera::processKeyPress(Key key)
 {
-  switch (key)
-  {
-    case KEY_FORWARD:
-      if (m_move == LEFT)
-        m_move = FORWARDLEFT;
-      else if (m_move == RIGHT)
-        m_move = FORWARDRIGHT;
-      else
-        m_move = FORWARD;
-      break;
-    case KEY_BACKWARD:
-      if (m_move == LEFT)
-        m_move = BACKWARDLEFT;
-      else if (m_move == RIGHT)
-        m_move = BACKWARDRIGHT;
-      else
-        m_move = BACKWARD;
-      break;
-    case KEY_RIGHT:
-      if (m_move == FORWARD)
-        m_move = FORWARDRIGHT;
-      else if (m_move == BACKWARD)
-        m_move = BACKWARDRIGHT;
-      else
-        m_move = RIGHT;
-      break;
-    case KEY_LEFT:
-      if (m_move == FORWARD)
-        m_move = FORWARDLEFT;
-      else if (m_move == BACKWARD)
-        m_move = BACKWARDLEFT;
-      else
-        m_move = LEFT;
-      break;
-    case KEY_UP:
-      m_move = UP;
-      break;
-    case KEY_DOWN:
-      m_move = DOWN;
-      break;
-  }
+  m_keyStates[key] = true;
 }
 
 void FreeFlyCamera::processKeyRelease(Key key)
 {
-  switch (key)
-  {
-    case KEY_FORWARD:
-      if (m_move == FORWARD)
-        m_move = NONE;
-      else if (m_move == FORWARDLEFT)
-        m_move = LEFT;
-      else if (m_move == FORWARDRIGHT)
-        m_move = RIGHT;
-      break;
-    case KEY_BACKWARD:
-      if (m_move == BACKWARD)
-        m_move = NONE;
-      else if (m_move == BACKWARDLEFT)
-        m_move = LEFT;
-      else if (m_move == BACKWARDRIGHT)
-        m_move = RIGHT;
-      break;
-    case KEY_RIGHT:
-      if (m_move == RIGHT)
-        m_move = NONE;
-      else if (m_move == FORWARDRIGHT)
-        m_move = FORWARD;
-      else if (m_move == BACKWARDRIGHT)
-        m_move = BACKWARD;
-      break;
-    case KEY_LEFT:
-      if (m_move == LEFT)
-        m_move = NONE;
-      else if (m_move == FORWARDLEFT)
-        m_move = FORWARD;
-      else if (m_move == BACKWARDLEFT)
-        m_move = BACKWARD;
-      break;
-    case KEY_UP:
-      if (m_move == UP)
-        m_move = NONE;
-      break;
-    case KEY_DOWN:
-      if (m_move == DOWN)
-        m_move = NONE;
-      break;
-  }
+  m_keyStates[key] = false;
 }
 
 void FreeFlyCamera::processMousePress(int mouseX, int mouseY)
@@ -341,7 +235,7 @@ void FreeFlyCamera::processMouseScroll(float yoffset) {
 }
 
 void FreeFlyCamera::stopMovement() {
-  m_move = NONE;
+  resetKeyStates();
 }
 
 void FreeFlyCamera::setMouseOffsetBufferSize(size_t size) {
@@ -360,10 +254,10 @@ void FreeFlyCamera::initOffsetBuffer() {
 
 void FreeFlyCamera::updateOffsetBuffer()
 {
-  //Remplissage du buffer de mouvements de la souris
   m_offsetBuffer[m_offsetBufferEnd] = m_mouseOffset * m_sensitivity;
   m_offsetBufferEnd++;
   if (m_offsetBufferEnd == m_bufferSize) m_offsetBufferEnd = 0;
+  m_mouseOffset = Vector2f::Zero();
 }
 
 Vector2f FreeFlyCamera::getSmoothMouseOffset()
@@ -373,5 +267,14 @@ Vector2f FreeFlyCamera::getSmoothMouseOffset()
     offset += m_offsetBuffer[i];
   }
   return offset;
+}
+
+void FreeFlyCamera::resetKeyStates() {
+  m_keyStates[KEY_FORWARD] = false;
+  m_keyStates[KEY_BACKWARD] = false;
+  m_keyStates[KEY_LEFT] = false;
+  m_keyStates[KEY_RIGHT] = false;
+  m_keyStates[KEY_UP] = false;
+  m_keyStates[KEY_DOWN] = false;
 }
 
