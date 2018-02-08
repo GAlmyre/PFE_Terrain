@@ -51,6 +51,10 @@ private slots:
   void loadTexture();
   void toggleFog();
   void tessellationMethod();
+
+ signals:
+  void loadedHeightMap(const QImage&);
+  void loadedTexture(const QImage&);
 };
 
 #endif // MAINWINDOW_HPP

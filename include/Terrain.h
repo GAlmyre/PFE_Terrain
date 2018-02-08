@@ -16,15 +16,16 @@ class Terrain : public Mesh
 
   void setHeightMap(const QImage& heightmap);
   void setTexture(const QImage&  texture);
-  
+
+  void draw(QOpenGLShaderProgram&) override;
   void drawHardwareTessellation();
   void drawPatchInstanciation();
 
   void updateBaseMesh();
   
  private:
-  QImage _heightMap;
-  QImage _texture;
+  QOpenGLTexture *_heightMap = nullptr;
+  QOpenGLTexture *_texture = nullptr;
   unsigned int _pixelsPerPatch;
   bool _quadPatches;
 
