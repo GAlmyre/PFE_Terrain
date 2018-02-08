@@ -34,9 +34,47 @@ void Terrain::draw(QOpenGLShaderProgram &shader){
   Mesh::draw(shader);
 }
 
-void Terrain::drawHardwareTessellation()
+void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
 {
-  std::cout << "Terrain::drawHardwareTessellation not implemented yet." << std::endl;
+//  std::cout << "Terrain::drawHardwareTessellation not implemented yet." << std::endl;
+  if(!_initialized)
+    initVAO();
+
+  // Set uniforms
+  QMatrix4x4 model;
+  model.setToIdentity();
+
+  shader.setUniformValue(shader.uniformLocation("model"), model);
+  _heightMap->bind(0);
+  shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
+
+  _vertexArray.bind();
+  _vertexBuffer->bind();
+  _indexBuffer->bind();
+
+  int vertex_loc = shader.attributeLocation("vtx_position");
+  if(vertex_loc>=0) {
+    shader.setAttributeBuffer(vertex_loc, GL_FLOAT, offsetof(Mesh::Vertex,position), 3, sizeof(Mesh::Vertex));
+    shader.enableAttributeArray(vertex_loc);
+  }
+
+  int normal_loc = shader.attributeLocation("vtx_normal");
+  if(normal_loc>=0) {
+    shader.setAttributeBuffer(normal_loc, GL_FLOAT, offsetof(Mesh::Vertex,normal), 3, sizeof(Mesh::Vertex));
+    shader.enableAttributeArray(normal_loc);
+  }
+
+  int texcoord_loc = shader.attributeLocation("vtx_texcoord");
+  if(texcoord_loc>=0) {
+    shader.setAttributeBuffer(texcoord_loc, GL_FLOAT, offsetof(Mesh::Vertex,texcoord), 2, sizeof(Mesh::Vertex));
+    shader.enableAttributeArray(texcoord_loc);
+  }
+
+  glDrawElements(GL_PATCHES, _indices.size(), GL_UNSIGNED_INT, 0);
+
+  _indexBuffer->release();
+  _vertexBuffer->release();
+  _vertexArray.release();
 }
 void Terrain::drawPatchInstanciation()
 {
@@ -172,4 +210,10 @@ void Terrain::fillMeshBuffers()
 	_indices.push_back(v2.idx());
       } while (++fvit != fvend);
     }
+}
+
+void Terrain::clean() {
+  Mesh::clean();
+  if (_heightMap) delete _heightMap;
+  if (_texture) delete _texture;
 }

@@ -57,8 +57,8 @@ public:
       qDebug() << program->log();
     }
 
-    _innerTessIndex = _f->glGetProgramResourceLocation(program->programId(), GL_UNIFORM, "TessLevelInner");
-    _outerTessIndex = _f->glGetProgramResourceLocation(program->programId(), GL_UNIFORM, "TessLevelOuter");
+    _innerTessLoc = _f->glGetProgramResourceLocation(program->programId(), GL_UNIFORM, "TessLevelInner");
+    _outerTessLoc = _f->glGetProgramResourceLocation(program->programId(), GL_UNIFORM, "TessLevelOuter");
 
     _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
   }
@@ -74,23 +74,21 @@ public:
 
     _f->glUseProgram(program->programId());
 
-    _f->glUniform1f(_innerTessIndex, TessLevelInner);
-    _f->glUniform3fv(_outerTessIndex, 1, TessLevelOuter);
+    _f->glUniform1f(_innerTessLoc, TessLevelInner);
+    _f->glUniform3fv(_outerTessLoc, 1, TessLevelOuter);
 
     _f->glBindVertexArray(vao);
     _f->glDrawElements(GL_PATCHES, 6, GL_UNSIGNED_INT, 0);
   }
 
   virtual void update(float dt) {
-    _f->glUseProgram(program->programId());
-
-
   }
 
   virtual void clean() {
     _f->glDeleteVertexArrays(1, &vao);
     _f->glDeleteBuffers(1, &vbo);
     _f->glDeleteBuffers(1, &ebo);
+    delete program;
   }
 
   virtual QDockWidget *createDock() {
@@ -128,19 +126,14 @@ public:
     return dock;
   }
 
-protected slots:
-  void setTessLevelInner(int level) {
-    TessLevelInner = level;
-  }
-
 private:
   GLuint vao;
   GLuint vbo;
   GLuint ebo;
-  QOpenGLShaderProgram *program;
+  QOpenGLShaderProgram *program = nullptr;
 
-  GLuint _innerTessIndex;
-  GLuint _outerTessIndex;
+  GLint _innerTessLoc;
+  GLint _outerTessLoc;
 
   float TessLevelInner = 1.0f;
   float TessLevelOuter[3] = { 1.0f, 1.0f, 1.0f };

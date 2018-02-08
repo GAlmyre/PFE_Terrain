@@ -3,7 +3,7 @@
 #include "Mesh.h"
 
 Mesh::Mesh()
-  : _position(Eigen::Vector3f::Constant(0)), _updateWorldMat(true), _initialized(false)
+  : _position(Eigen::Vector3f::Zero()), _updateWorldMat(true), _initialized(false)
 {}
 
 Mesh::~Mesh()
@@ -23,8 +23,8 @@ void Mesh::initVAO() {
   _indexBuffer->allocate(&(_indices[0]), sizeof(unsigned int)*_indices.size());
   _vertexArray.create();
   _initialized = true;
-  _indexBuffer->release();
   _vertexBuffer->release();
+  _indexBuffer->release();
 }
 
 
@@ -68,7 +68,7 @@ void Mesh::draw(QOpenGLShaderProgram &shader){
     shader.disableAttributeArray(normal_loc);
   if(texcoord_loc)
     shader.disableAttributeArray(texcoord_loc);
-    
+
   _indexBuffer->release();
   _vertexBuffer->release();
   _vertexArray.release();
@@ -77,7 +77,7 @@ void Mesh::draw(QOpenGLShaderProgram &shader){
 void Mesh::clear()
 {
   _updateWorldMat = true;
-  _position = Eigen::Vector3f::Constant(0);
+  _position = Eigen::Vector3f::Zero();
 
   _initialized = false;
 
