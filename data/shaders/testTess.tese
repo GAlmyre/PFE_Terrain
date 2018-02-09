@@ -1,6 +1,6 @@
 #version 400 core
 
-layout (triangles, equal_spacing, cw) in;
+layout (triangles, fractional_even_spacing, ccw) in;
 
 in VertexData {
     vec3 color;

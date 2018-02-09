@@ -6,7 +6,8 @@ using namespace surface_mesh;
 using namespace Eigen;
 
 Terrain::Terrain()
-  : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr), _width(0), _height(0)
+  : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr),
+    _width(0), _height(0), _rows(0), _cols(0)
 {
   updateBaseMesh();
 }
@@ -28,6 +29,11 @@ void Terrain::setTexture(const QImage& texture)
 
 Eigen::Vector2f Terrain::getSize() {
   return Eigen::Vector2f(_width, _height);
+}
+
+
+float Terrain::getTriEdgeSize() {
+  return (float) _width / (float) _cols;
 }
 
 void Terrain::draw(QOpenGLShaderProgram &shader){
@@ -121,6 +127,8 @@ void Terrain::updateBaseMesh()
     createGrid(w, h, gridw, gridh, false);
     _width = w;
     _height = h;
+    _rows = gridh;
+    _cols = gridw;
   }
   else
   {
@@ -129,6 +137,8 @@ void Terrain::updateBaseMesh()
     createGrid(5,5,10,10, false);
     _width = 5;
     _height = 5;
+    _rows = 10;
+    _cols = 10;
   }
 }
 

@@ -9,7 +9,7 @@ using namespace Eigen;
 class TerrainScene : public Scene {
  public:
 
-  enum TexturingMode {CONST_COLOR=0, TEXTURE=1, HEIGHTMAP=2, NORMALS=3, TEXCOORDS=4};//if these values are changed make sure to change them in simple.frag the same way
+  enum TexturingMode {CONST_COLOR=0, TEXTURE=1, HEIGHTMAP=2, NORMALS=3, TEXCOORDS=4, TESSLEVEL=5};//if these values are changed make sure to change them in simple.frag the same way
   enum DrawMode {FILL, WIREFRAME, FILL_AND_WIREFRAME};
   enum CameraMode {FREE_FLY};
   enum TessellationMethod {NO_TESSELLATION, HARDWARE, INSTANCIATION};
@@ -83,6 +83,8 @@ class TerrainScene : public Scene {
       _f->glUniform1f(_simpleTessPrg->uniformLocation("TessLevelInner"), _constantInnerTessellationLevel);
       Vector3f outerLvl = Vector3f::Constant(_constantOuterTessellationLevel);
       _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
+      _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
+      _f->glUniform1f(_simpleTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _heightScale);
       
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
@@ -157,6 +159,7 @@ class TerrainScene : public Scene {
     texturingCB->addItem("Height map", TexturingMode::HEIGHTMAP);
     texturingCB->addItem("Normal map", TexturingMode::NORMALS);
     texturingCB->addItem("Texture coordinates", TexturingMode::TEXCOORDS);
+    texturingCB->addItem("Tessellation level", TexturingMode::TESSLEVEL);
     
     QObject::connect(texturingCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
 		     [this, texturingCB](int ind) {

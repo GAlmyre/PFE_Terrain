@@ -12,6 +12,7 @@ in vec2 vtx_texcoord;
 //*
 out FragData {
   vec2 texcoord;
+  float tessLevel;
 } vs_to_fs;
 //*/
 //*
@@ -29,4 +30,5 @@ void main()
   vs_out.position = vec4(vtx_position, 1.);
   vs_out.texcoord = vtx_texcoord;
   vs_to_fs.texcoord = vtx_texcoord;
+  vs_to_fs.tessLevel = 1.f;
 }
