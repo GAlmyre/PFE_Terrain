@@ -248,12 +248,11 @@ class TerrainScene : public Scene {
     innerLvlSB->setRange(1., 64.);
     QDoubleSpinBox * outerLvlSB = new QDoubleSpinBox;
     outerLvlSB->setSingleStep(0.1);
-    outerLvlSB->setRange(1., 1.);
+    outerLvlSB->setRange(1., 64 .);
 
     QObject::connect(innerLvlSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
 		     [this, outerLvlSB](double val){
 		       _constantInnerTessellationLevel = val;
-		       outerLvlSB->setMaximum(val);
 		     });
     QObject::connect(outerLvlSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
 		     [this](double val){
