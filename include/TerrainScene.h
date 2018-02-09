@@ -86,8 +86,12 @@ class TerrainScene : public Scene {
       _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _heightScale);
+      _f->glUniform2fv(_simpleTessPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
 
-      _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode);
+      if (_tessellationMode == TessellationMode::CONSTANT)
+        _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), TessellationMode::CONSTANT);
+      else
+        _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode);
       if (_tessellationMode == ADAPTATIVE_FROM_POV) {
         _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
       } else if (_tessellationMode == ADAPTATIVE_FROM_FIXED_POINT) {

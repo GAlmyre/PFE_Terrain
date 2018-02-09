@@ -123,6 +123,11 @@ float FreeFlyCamera::speed() const {
   return m_speed;
 }
 
+Eigen::Vector2f FreeFlyCamera::viewport() const {
+  return Eigen::Vector2f((float) m_width, (float) m_height);
+}
+
+
 Eigen::Vector3f FreeFlyCamera::position() {
   return m_position;
 }
@@ -294,4 +299,3 @@ void FreeFlyCamera::resetKeyStates() {
   m_keyStates[KEY_UP] = false;
   m_keyStates[KEY_DOWN] = false;
 }
-
