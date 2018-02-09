@@ -35,6 +35,8 @@ public:
   // Returns the projection matrix
   const Eigen::Matrix4f &projectionMatrix() const;
 
+  float speed() const;
+
   Eigen::Vector3f position();
   Eigen::Vector3f direction();
   Eigen::Vector3f up();

@@ -119,6 +119,10 @@ const Eigen::Matrix4f &FreeFlyCamera::projectionMatrix() const {
   return m_ProjectionMatrix;
 }
 
+float FreeFlyCamera::speed() const {
+  return m_speed;
+}
+
 Eigen::Vector3f FreeFlyCamera::position() {
   return m_position;
 }
