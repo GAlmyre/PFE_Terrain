@@ -5,6 +5,9 @@
 
 #include <Viewer.h>
 #include <iostream>
+#include <sstream>
+
+#include "CImg/CImg.h"
 
 MainWindow::MainWindow(QWidget *parent) :
   QMainWindow(parent),
@@ -95,9 +98,22 @@ void MainWindow::loadHeightMap() {
   QFileInfo fileInfo(fileName);
   QString fileExtension = fileInfo.suffix();
 
+  cimg_library::CImg<unsigned char> image(fileName.toStdString().c_str());
+  std::cout << "img : " << image.width()
+	    << " " << image.height()
+	    << " " << image.depth()
+	    << " " << image.spectrum()
+	    << std::endl;
+  cimg_library::CImgList<float> l = image.get_gradient("xy", 2);
+  l[0].normalize(0.,255.);
+  l[1].normalize(0.,255.);
+
+  image.append(l[0], 'c');
+  image.append(l[1], 'c');
+  image.save_bmp("../data/heightmaps/tmp.bmp");
+  QImage heightmap("../data/heightmaps/tmp.bmp");
   std::cout << "opened heightmap file :" << fileName.toStdString() << '\n';
-  QImage heightmap;
-  heightmap.load(fileName);
+  
   emit loadedHeightMap(heightmap);
 }
 

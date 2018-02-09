@@ -19,20 +19,9 @@ class TerrainScene : public Scene {
   void initialize() override {
     _terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
     _terrain.setTexture(QImage("../data/textures/rainbow.png"));
+
+    loadShaders();
     
-    //shader init
-    _simplePrg = new QOpenGLShaderProgram();
-    _simplePrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
-    _simplePrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/simple.frag");
-    _simplePrg->link();
-
-    _simpleTessPrg = new QOpenGLShaderProgram();
-    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
-    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/simple.frag");
-    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/simpleTess.tesc");
-    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationEvaluation, "../data/shaders/simpleTess.tese");
-    _simpleTessPrg->link();
-
     _camera->setPosition(Eigen::Vector3f(10, 100, 10));
     _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
     _camera->setViewport(600, 400);
@@ -45,6 +34,25 @@ class TerrainScene : public Scene {
     _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
   }
 
+  void loadShaders(){
+    if(_simplePrg)
+      delete _simplePrg;
+    if(_simpleTessPrg)
+      delete _simpleTessPrg;
+    //shader init
+    _simplePrg = new QOpenGLShaderProgram();
+    _simplePrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
+    _simplePrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/simple.frag");
+    _simplePrg->link();
+
+    _simpleTessPrg = new QOpenGLShaderProgram();
+    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
+    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/simple.frag");
+    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/simpleTess.tesc");
+    _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationEvaluation, "../data/shaders/simpleTess.tese");
+    _simpleTessPrg->link();
+  }
+
   void render() override {
     
     _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -52,7 +60,7 @@ class TerrainScene : public Scene {
     if(_tessellationMethod == TessellationMethod::NO_TESSELLATION)
     {
       _simplePrg->bind();
-
+      _f->glUniform1f(_simplePrg->uniformLocation("heightScale"), _heightScale);
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
@@ -285,7 +293,7 @@ class TerrainScene : public Scene {
     QSpinBox * scaleSB = new QSpinBox();
     scaleSB->setMinimum(0);
     scaleSB->setMaximum(200);
-    scaleSB->setSingleStep(5);
+    scaleSB->setSingleStep(1);
     scaleSB->setValue(50);
     QSlider * scaleSlider = new QSlider();
     scaleSlider->setOrientation(Qt::Horizontal);
@@ -365,6 +373,16 @@ class TerrainScene : public Scene {
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     QFrame *frame = new QFrame(dock);
     QVBoxLayout * VLayout = new QVBoxLayout;
+
+    QPushButton * reloadShadersButton = new QPushButton;
+    reloadShadersButton->setText("Reload shaders");
+    VLayout->addWidget(reloadShadersButton);
+
+    QObject::connect(reloadShadersButton, static_cast<void (QPushButton::*)()>(&QPushButton::pressed),
+		     [this](){
+		       loadShaders();
+		     });
+    
     VLayout->setAlignment(Qt::AlignTop);
     VLayout->addWidget(createDisplayGroupBox());
     VLayout->addWidget(createCameraGroupBox());

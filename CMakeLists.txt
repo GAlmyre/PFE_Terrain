@@ -24,6 +24,7 @@ include_directories(ext/)
 include_directories(assets/)
 include_directories(include/)
 include_directories(ext/eigen3/)
+include_directories(ext/CImg/)
 
 # Executable + source_files
 add_executable(
@@ -31,4 +32,4 @@ add_executable(
   ${source_files}
         include/utils.h include/Scene.h include/TerrainScene.h include/TessTestScene.h include/TessTerrainScene.h)
 
-target_link_libraries(TerrainTintin Qt5::Widgets Qt5::Core Qt5::OpenGL GL)
+target_link_libraries(TerrainTintin Qt5::Widgets Qt5::Core Qt5::OpenGL GL -L/usr/X11R6/lib -lm -lpthread -lX11)
