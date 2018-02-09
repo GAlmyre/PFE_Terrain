@@ -14,6 +14,7 @@ class TerrainScene : public Scene {
   enum CameraMode {FREE_FLY};
   enum TessellationMethod {NO_TESSELLATION, HARDWARE, INSTANCIATION};
   enum TessellationMode {CONSTANT, ADAPTATIVE_FROM_POV, ADAPTATIVE_FROM_FIXED_POINT};
+  enum AdaptativeMode {DISTANCE};
   
   void initialize() override {
     _terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
@@ -79,8 +80,9 @@ class TerrainScene : public Scene {
       
       _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
       
-      _f->glUniform1f(_simpleTessPrg->uniformLocation("TessLevelInner"), 5.);
-      _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, Vector3f(3.,3.,3.).data());
+      _f->glUniform1f(_simpleTessPrg->uniformLocation("TessLevelInner"), _constantInnerTessellationLevel);
+      Vector3f outerLvl = Vector3f::Constant(_constantOuterTessellationLevel);
+      _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _heightScale);
       
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
@@ -204,14 +206,78 @@ class TerrainScene : public Scene {
     tessellationModeCB->addItem("Constant", TessellationMode::CONSTANT);
     tessellationModeCB->addItem("Adaptative from POV", TessellationMode::ADAPTATIVE_FROM_POV);
     tessellationModeCB->addItem("Adaptative from marker", TessellationMode::ADAPTATIVE_FROM_FIXED_POINT);
+
+    QFrame * constantModeSubMenu = new QFrame();
+    constantModeSubMenu->setVisible(true);
+    QFrame * adaptativeModeSubMenu = new QFrame();
+    adaptativeModeSubMenu->setVisible(false);
     
     QObject::connect(tessellationModeCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
-		     [this, tessellationModeCB](int ind) {
+		     [this, tessellationModeCB, constantModeSubMenu, adaptativeModeSubMenu](int ind) {
 		       int data = tessellationModeCB->itemData(ind).toInt();
 		       _tessellationMode = (TessellationMode)data;
+		       switch(_tessellationMode){
+		       case TessellationMode::CONSTANT:
+			 constantModeSubMenu->setVisible(true);
+			 adaptativeModeSubMenu->setVisible(false);
+			 break;
+		       case TessellationMode::ADAPTATIVE_FROM_POV:
+		       case TessellationMode::ADAPTATIVE_FROM_FIXED_POINT:
+			 constantModeSubMenu->setVisible(false);
+			 adaptativeModeSubMenu->setVisible(true);
+			 break;
+		       }
 		     });
     
     tessellationLayout->addWidget(tessellationModeCB);
+    tessellationLayout->addWidget(constantModeSubMenu);
+    tessellationLayout->addWidget(adaptativeModeSubMenu);
+
+    QFormLayout * constantModeLayout = new QFormLayout;
+    constantModeSubMenu->setLayout(constantModeLayout);
+    QDoubleSpinBox * innerLvlSB = new QDoubleSpinBox;
+    innerLvlSB->setSingleStep(0.1);
+    innerLvlSB->setRange(1., 64.);
+    QDoubleSpinBox * outerLvlSB = new QDoubleSpinBox;
+    outerLvlSB->setSingleStep(0.1);
+    outerLvlSB->setRange(1., 1.);
+
+    QObject::connect(innerLvlSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+		     [this, outerLvlSB](double val){
+		       _constantInnerTessellationLevel = val;
+		       outerLvlSB->setMaximum(val);
+		     });
+    QObject::connect(outerLvlSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+		     [this](double val){
+		       _constantOuterTessellationLevel = val;
+		     });
+    constantModeLayout->addRow("Inner level", innerLvlSB);
+    constantModeLayout->addRow("Outer level", outerLvlSB);
+
+
+    QFormLayout * adaptativeModeLayout = new QFormLayout;
+    adaptativeModeSubMenu->setLayout(adaptativeModeLayout);
+
+    QComboBox * adaptativeTessModeCB = new QComboBox();
+    adaptativeTessModeCB->setEditable(false);
+    adaptativeTessModeCB->addItem("Distance", AdaptativeMode::DISTANCE);
+    QObject::connect(adaptativeTessModeCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
+		     [this, adaptativeTessModeCB](int ind) {
+		       int data = adaptativeTessModeCB->itemData(ind).toInt();
+		       _adaptativeTessellationMode = (AdaptativeMode)data;
+		     });
+    
+    QDoubleSpinBox * adaptativeFactorSB = new QDoubleSpinBox;
+    innerLvlSB->setSingleStep(0.1);
+    innerLvlSB->setRange(0., 100);
+
+    QObject::connect(adaptativeFactorSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+		     [this](double val){
+		       _adaptativeFactor = val;
+		     });
+    adaptativeModeLayout->addRow("LOD method", adaptativeTessModeCB);
+    adaptativeModeLayout->addRow("Adaptative LOD factor", adaptativeFactorSB);
+    
 
     tessellationLayout->addWidget(new QLabel("Height Scale Factor :"));
 
@@ -326,12 +392,16 @@ class TerrainScene : public Scene {
   QOpenGLShaderProgram * _simpleTessPrg;
   Terrain _terrain;
 
+  float _constantInnerTessellationLevel = 1.;
+  float _constantOuterTessellationLevel = 1.;
+  float _adaptativeFactor = 1.;					    
   float _heightScale = 50.f;
   TexturingMode _texMode = TexturingMode::CONST_COLOR;
   DrawMode _drawMode = DrawMode::FILL;
   CameraMode _cameraMode = CameraMode::FREE_FLY;
   TessellationMethod _tessellationMethod = TessellationMethod::NO_TESSELLATION;
   TessellationMode _tessellationMode = TessellationMode::CONSTANT;
+  AdaptativeMode _adaptativeTessellationMode = AdaptativeMode::DISTANCE;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H
