@@ -8,6 +8,7 @@ in VertexData {
 
 out FragData {
     vec2 texcoord;
+    float tessLevel;
 } tes_out;
 
 uniform float heightScale;
@@ -35,4 +36,7 @@ void main(void){
     //tes_out.worldPos = (model * position).xyz;
     tes_out.texcoord = texcoord;
     gl_Position = projection * view * model * position;
+
+    // Pass tess levels
+    tes_out.tessLevel = gl_TessLevelInner[0];
 }

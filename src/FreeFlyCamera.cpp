@@ -119,6 +119,14 @@ const Eigen::Matrix4f &FreeFlyCamera::projectionMatrix() const {
   return m_ProjectionMatrix;
 }
 
+float FreeFlyCamera::speed() const {
+  return m_speed;
+}
+
+Eigen::Vector3f FreeFlyCamera::position() {
+  return m_position;
+}
+
 Eigen::Vector3f FreeFlyCamera::direction() {
   return -m_viewMatrix.linear().row(2);
 }
@@ -194,6 +202,11 @@ void FreeFlyCamera::update(float dt)
       m_pitch = degToRad(89.0f);
     if (radToDeg(m_pitch) < -89.0f)
       m_pitch = degToRad(-89.0f);
+
+    if (m_yaw > 2 * M_PI)
+      m_yaw = m_yaw - 2 * M_PI;
+    if (m_yaw < - 2 * M_PI)
+      m_yaw = m_yaw + 2 * M_PI;
   }
 
   // Update View Matrix

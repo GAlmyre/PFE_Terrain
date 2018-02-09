@@ -9,12 +9,12 @@ using namespace Eigen;
 class TerrainScene : public Scene {
  public:
 
-  enum TexturingMode {CONST_COLOR=0, TEXTURE=1, HEIGHTMAP=2, NORMALS=3, TEXCOORDS=4};//if these values are changed make sure to change them in simple.frag the same way
+  enum TexturingMode {CONST_COLOR=0, TEXTURE=1, HEIGHTMAP=2, NORMALS=3, TEXCOORDS=4, TESSLEVEL=5};//if these values are changed make sure to change them in simple.frag the same way
   enum DrawMode {FILL, WIREFRAME, FILL_AND_WIREFRAME};
   enum CameraMode {FREE_FLY};
   enum TessellationMethod {NO_TESSELLATION, HARDWARE, INSTANCIATION};
-  enum TessellationMode {CONSTANT, ADAPTATIVE_FROM_POV, ADAPTATIVE_FROM_FIXED_POINT};
-  enum AdaptativeMode {DISTANCE};
+  enum TessellationMode {CONSTANT = 0, ADAPTATIVE_FROM_POV, ADAPTATIVE_FROM_FIXED_POINT};
+  enum AdaptativeMode {DISTANCE = 1, VIEWSPACE = 2};
   
   void initialize() override {
     _terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
@@ -51,6 +51,18 @@ class TerrainScene : public Scene {
     _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/simpleTess.tesc");
     _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationEvaluation, "../data/shaders/simpleTess.tese");
     _simpleTessPrg->link();
+
+    _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
+    _camera->setPosition(Eigen::Vector3f(10, 100, 10));
+    _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
+    _camera->setViewport(600, 400);
+    _camera->setSpeed(_defaultCamSpeed);
+
+    _f->glEnable(GL_DEPTH_TEST);
+    _f->glClearColor(0.2, 0.2, 0.2, 1.0);
+    _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
   }
 
   void render() override {
@@ -91,7 +103,16 @@ class TerrainScene : public Scene {
       _f->glUniform1f(_simpleTessPrg->uniformLocation("TessLevelInner"), _constantInnerTessellationLevel);
       Vector3f outerLvl = Vector3f::Constant(_constantOuterTessellationLevel);
       _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
+      _f->glUniform1f(_simpleTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _heightScale);
+
+      _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode);
+      if (_tessellationMode == ADAPTATIVE_FROM_POV) {
+        _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
+      } else if (_tessellationMode == ADAPTATIVE_FROM_FIXED_POINT) {
+        /* TODO : Implement Placement of point on scene */
+        _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
+      }
       
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
       _f->glDepthFunc(GL_LESS);
@@ -165,6 +186,7 @@ class TerrainScene : public Scene {
     texturingCB->addItem("Height map", TexturingMode::HEIGHTMAP);
     texturingCB->addItem("Normal map", TexturingMode::NORMALS);
     texturingCB->addItem("Texture coordinates", TexturingMode::TEXCOORDS);
+    texturingCB->addItem("Tessellation level", TexturingMode::TESSLEVEL);
     
     QObject::connect(texturingCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
 		     [this, texturingCB](int ind) {
@@ -268,6 +290,7 @@ class TerrainScene : public Scene {
     QComboBox * adaptativeTessModeCB = new QComboBox();
     adaptativeTessModeCB->setEditable(false);
     adaptativeTessModeCB->addItem("Distance", AdaptativeMode::DISTANCE);
+    adaptativeTessModeCB->addItem("Viewspace", AdaptativeMode::VIEWSPACE);
     QObject::connect(adaptativeTessModeCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
 		     [this, adaptativeTessModeCB](int ind) {
 		       int data = adaptativeTessModeCB->itemData(ind).toInt();
@@ -343,13 +366,14 @@ class TerrainScene : public Scene {
     QHBoxLayout * cameraSpeedLayout = new QHBoxLayout;
     QSpinBox * cameraSpeedSB = new QSpinBox();
     cameraSpeedSB->setMinimum(0);
+    cameraSpeedSB->setMaximum(30);
     cameraSpeedSB->setSingleStep(1);
-    cameraSpeedSB->setValue(5);
+    cameraSpeedSB->setValue(15);
     QSlider * cameraSpeedSlider = new QSlider();
     cameraSpeedSlider->setOrientation(Qt::Horizontal);
     cameraSpeedSlider->setMinimum(0);
-    cameraSpeedSlider->setMaximum(25);
-    cameraSpeedSlider->setValue(5);
+    cameraSpeedSlider->setMaximum(30);
+    cameraSpeedSlider->setValue(15);
     
     QObject::connect(cameraSpeedSB, SIGNAL(valueChanged(int)),
 		     cameraSpeedSlider, SLOT(setValue(int)));
@@ -357,7 +381,7 @@ class TerrainScene : public Scene {
 		     cameraSpeedSB, SLOT(setValue(int)));
     QObject::connect(cameraSpeedSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
 		     [this](int val){
-		       this->_camera->setSpeed((float)val/100);
+		       _camera->setSpeed(_defaultCamSpeed * val / 15.f);
 		     });
     cameraSpeedLayout->addWidget(cameraSpeedSB);
     cameraSpeedLayout->addWidget(cameraSpeedSlider);
@@ -395,7 +419,8 @@ class TerrainScene : public Scene {
     QObject::connect(&mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedHeightMap),
 		     [this](const QImage& im) {
 		       this->_terrain.setHeightMap(im);
-           _camera->setSpeed(_terrain.getSize().norm() / 4000.f);
+           _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
+           _camera->setSpeed(_defaultCamSpeed);
 		     });
 
     QObject::connect(&mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedTexture),
@@ -419,6 +444,8 @@ class TerrainScene : public Scene {
   TessellationMethod _tessellationMethod = TessellationMethod::NO_TESSELLATION;
   TessellationMode _tessellationMode = TessellationMode::CONSTANT;
   AdaptativeMode _adaptativeTessellationMode = AdaptativeMode::DISTANCE;
+
+  float _defaultCamSpeed;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H
