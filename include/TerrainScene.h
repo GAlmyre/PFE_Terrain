@@ -270,7 +270,7 @@ class TerrainScene : public Scene {
     innerLvlSB->setRange(1., 64.);
     QDoubleSpinBox * outerLvlSB = new QDoubleSpinBox;
     outerLvlSB->setSingleStep(0.1);
-    outerLvlSB->setRange(1., 64 .);
+    outerLvlSB->setRange(1., 64.);
 
     QObject::connect(innerLvlSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
 		     [this, outerLvlSB](double val){
