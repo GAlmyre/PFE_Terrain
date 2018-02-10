@@ -126,8 +126,8 @@ void MainWindow::loadHeightMap() {
   */
   //image.print();
   
-  image.save_png("../data/test/tmp.png");
-  QImage heightmap("../data/test/tmp.png");
+  image.save_png("../data/heightmaps/tmp.png");
+  QImage heightmap("../data/heightmaps/tmp.png");
   std::cout << "opened heightmap file :" << fileName.toStdString() << '\n';
   
   emit loadedHeightMap(heightmap);
