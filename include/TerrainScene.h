@@ -22,7 +22,9 @@ class TerrainScene : public Scene {
 
     loadShaders();
 
-        _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
+    _needShaderReloading = false;
+
+    _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
     _camera->setPosition(Eigen::Vector3f(10, 100, 10));
     _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
     _camera->setViewport(600, 400);
@@ -55,7 +57,11 @@ class TerrainScene : public Scene {
   }
 
   void render() override {
-    
+    if (_needShaderReloading) {
+      loadShaders();
+      _needShaderReloading = false;
+    }
+
     _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     
     if(_tessellationMethod == TessellationMethod::NO_TESSELLATION)
@@ -94,8 +100,12 @@ class TerrainScene : public Scene {
       _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _heightScale);
+      _f->glUniform2fv(_simpleTessPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
 
-      _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode);
+      if (_tessellationMode == TessellationMode::CONSTANT)
+        _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), TessellationMode::CONSTANT);
+      else
+        _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode);
       if (_tessellationMode == ADAPTATIVE_FROM_POV) {
         _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
       } else if (_tessellationMode == ADAPTATIVE_FROM_FIXED_POINT) {
@@ -392,7 +402,7 @@ class TerrainScene : public Scene {
 
     QObject::connect(reloadShadersButton, static_cast<void (QPushButton::*)()>(&QPushButton::pressed),
 		     [this](){
-		       loadShaders();
+		       _needShaderReloading = true;
 		     });
     
     VLayout->setAlignment(Qt::AlignTop);
@@ -435,6 +445,7 @@ class TerrainScene : public Scene {
   AdaptativeMode _adaptativeTessellationMode = AdaptativeMode::DISTANCE;
 
   float _defaultCamSpeed;
+  bool _needShaderReloading;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H

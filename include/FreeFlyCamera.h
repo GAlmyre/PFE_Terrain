@@ -36,6 +36,7 @@ public:
   const Eigen::Matrix4f &projectionMatrix() const;
 
   float speed() const;
+  Eigen::Vector2f viewport() const;
 
   Eigen::Vector3f position();
   Eigen::Vector3f direction();
