@@ -11,6 +11,7 @@ uniform float heightScale;
 uniform bool wireframe;
 
 in FragData {
+  vec3 viewDirection;
   vec2 texcoord;
   float tessLevel;
 } fs_in;
@@ -34,7 +35,26 @@ vec3 normalFromTexcoords(vec2 uv, float elevation){
   normals = normals*2. - 1.;
   vec3 u = normalize(vec3(1., elevation*normals.x, 0.));
   vec3 v = normalize(vec3(0., elevation*normals.y, 1.));
-  return cross(v, u);
+  return normalize(cross(v, u));
+}
+
+vec3 shade(vec3 N, vec3 L, vec3 V, 
+           vec3 color, float Ka, float Kd, float Ks,
+           vec3 lightCol, float shininess){
+
+    vec3 final_color = color * Ka * lightCol;	//ambient
+
+    float lambertTerm = dot(N,L);		//lambert
+
+    if(lambertTerm > 0.0) {
+        final_color += color * Kd * lambertTerm * lightCol; 	//diffuse
+
+        vec3 R = reflect(-L,N);
+        float specular = pow(max(dot(R,V), 0.0), shininess);
+        final_color +=  Ks * lightCol * specular;	//specular
+    }
+
+    return final_color;
 }
 
 void main(void) {
@@ -44,7 +64,16 @@ void main(void) {
     case TEXTURING_MODE_CONST_COLOR:
       break;
     case TEXTURING_MODE_TEXTURE:
-      out_color = vec4(texture(texturemap, fs_in.texcoord.xy).xyz, 1.);
+      float Ka = 0.4;
+      float Kd = 0.5;
+      float Ks = 1.;
+      float shininess = 5;
+      vec3 lightColor = vec3(1,1,1);
+      vec3 normal = normalFromTexcoords(fs_in.texcoord, heightScale);
+      vec3 lightDir = normalize(vec3(1,1,1));
+      vec3 diffuse = texture(texturemap, fs_in.texcoord.xy).xyz;
+      vec3 color = shade(normalize(normal), lightDir, normalize(fs_in.viewDirection), diffuse, Ka, Kd, Ks, lightColor, shininess);
+      out_color = vec4(color, 1); 
       break;
     case TEXTURING_MODE_HEIGHTMAP:
       float val = texture(heightmap, fs_in.texcoord.xy).x;

@@ -11,6 +11,7 @@ in vec2 vtx_texcoord;
 
 //*
 out FragData {
+  vec3 viewDirection;
   vec2 texcoord;
   float tessLevel;
 } vs_to_fs;
@@ -29,6 +30,7 @@ void main()
   //vs_out.v_normal = vtx_normal;//TODO add normal matrix transformation ?
   vs_out.position = vec4(vtx_position, 1.);
   vs_out.texcoord = vtx_texcoord;
+  vs_to_fs.viewDirection = -gl_Position.xyz;
   vs_to_fs.texcoord = vtx_texcoord;
   vs_to_fs.tessLevel = 1.f;
 }
