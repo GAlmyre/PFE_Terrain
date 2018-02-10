@@ -2,41 +2,66 @@
 
 DirectionalLight::DirectionalLight() {}
 
-DirectionalLight::DirectionalLight(Eigen::Vector3f position, Eigen::Vector3f direction, Eigen::Vector3f color, float intensity)
-:_position(position), _direction(direction), _color(color), _intensity(intensity)
- {}
+DirectionalLight::DirectionalLight(Eigen::Vector3f observerPosition, float distanceToObserver, float azimuth, float altitude, Eigen::Vector3f color)
+  :_observerPosition(observerPosition), _distToObserver(distanceToObserver), _color(color)
+{
+  computeDirection();
+}
 
 DirectionalLight::~DirectionalLight()
 {}
 
-Eigen::Vector3f DirectionalLight::getPosition() {
-  return _position;
+Eigen::Vector3f DirectionalLight::getObserverPosition() {
+  return _observerPosition;
+}
+
+float DirectionalLight::getDistanceToObserver() {
+  return _distToObserver;
 }
 
 Eigen::Vector3f DirectionalLight::getDirection() {
   return _direction;
 }
 
+float DirectionalLight::getAzimuth() {
+  return _azimuth;
+}
+
+float DirectionalLight::getAltitude() {
+  return _altitude;
+}
+
 Eigen::Vector3f DirectionalLight::getColor() {
   return _color;
 }
 
-float DirectionalLight::getIntensity() {
-  return _intensity;
+
+void DirectionalLight::setObserverPosition(Eigen::Vector3f observerPosition) {
+  _observerPosition = observerPosition;
 }
 
-void DirectionalLight::setPosition(Eigen::Vector3f position) {
-  _position = position;
+void DirectionalLight::setDistanceToObserver(float dist) {
+  _distToObserver = dist;
 }
 
-void DirectionalLight::setDirection(Eigen::Vector3f direction) {
-  _direction = direction;
+void DirectionalLight::setAzimuth(float azimuth) {
+  _azimuth = azimuth;
+  computeDirection();
+}
+
+void DirectionalLight::setAltitude(float altitude) {
+  _altitude = altitude;
+  computeDirection();
 }
 
 void DirectionalLight::setColor(Eigen::Vector3f color) {
   _color = color;
 }
 
-void DirectionalLight::setIntensity(float intensity) {
-  _intensity = intensity;
+void DirectionalLight::computeDirection() {
+  float x = _distToObserver * cos(_altitude) * cos(_azimuth);
+  float y = _distToObserver * sin(_altitude);
+  float z = _distToObserver * cos(_altitude) * sin(_azimuth);
+  _direction = Eigen::Vector3f(x, y, z);
+  _direction.normalize();
 }

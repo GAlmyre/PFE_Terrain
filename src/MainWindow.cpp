@@ -113,7 +113,7 @@ void MainWindow::loadHeightMap() {
   //l[0].save_png("../data/test/sobel1.png");
   //l[1].save_png("../data/test/sobel2.png");
 
-  
+  //image.save_png("../data/test/tmp_hm.png");
   image.append(l[0], 'c');
   image.append(l[1], 'c');
 

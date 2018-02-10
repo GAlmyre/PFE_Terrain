@@ -10,6 +10,14 @@ uniform float heightScale;
 
 uniform bool wireframe;
 
+uniform float Ka;
+uniform float Kd;
+uniform float Ks;
+uniform float shininess;
+
+uniform vec3 lightDirection;
+uniform vec3 lightColor;
+
 in FragData {
   vec3 viewDirection;
   vec2 texcoord;
@@ -64,16 +72,28 @@ void main(void) {
     case TEXTURING_MODE_CONST_COLOR:
       break;
     case TEXTURING_MODE_TEXTURE:
+      float Kaa = 0.4;
+      float Kdd = 0.8;
+      float Kss = 0.2;
+      float sh = 50;
+      vec3 lc = vec3(1,1,1);
+      vec3 ld = normalize(vec3(1,1,1));
+      
+      vec3 normal = normalFromTexcoords(fs_in.texcoord, heightScale);
+      vec3 diffuse = texture(texturemap, fs_in.texcoord.xy).xyz;
+      vec3 color = shade(normal, normalize(lightDirection), normalize(fs_in.viewDirection), diffuse, Ka, Kd, Ks, lightColor, shininess);
+      out_color = vec4(color, 1);
+      /*
       float Ka = 0.4;
-      float Kd = 0.5;
-      float Ks = 1.;
-      float shininess = 5;
+      float Kd = 0.8;
+      float Ks = 0.2;
+      float shininess = 50;
       vec3 lightColor = vec3(1,1,1);
       vec3 normal = normalFromTexcoords(fs_in.texcoord, heightScale);
       vec3 lightDir = normalize(vec3(1,1,1));
       vec3 diffuse = texture(texturemap, fs_in.texcoord.xy).xyz;
       vec3 color = shade(normalize(normal), lightDir, normalize(fs_in.viewDirection), diffuse, Ka, Kd, Ks, lightColor, shininess);
-      out_color = vec4(color, 1); 
+      out_color = vec4(color, 1); */
       break;
     case TEXTURING_MODE_HEIGHTMAP:
       float val = texture(heightmap, fs_in.texcoord.xy).x;

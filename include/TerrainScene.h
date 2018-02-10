@@ -3,6 +3,7 @@
 
 #include "Scene.h"
 #include "Terrain.h"
+#include "DirectionalLight.h"
 
 using namespace Eigen;
 
@@ -18,7 +19,7 @@ class TerrainScene : public Scene {
   
   void initialize() override {
     _terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
-    _terrain.setTexture(QImage("../data/textures/rainbow.png"));
+    _terrain.setTexture(QImage("../data/textures/sol.jpg"));
 
     loadShaders();
 
@@ -67,6 +68,7 @@ class TerrainScene : public Scene {
     if(_tessellationMethod == TessellationMethod::NO_TESSELLATION)
     {
       _simplePrg->bind();
+      
       _f->glUniform1f(_simplePrg->uniformLocation("heightScale"), _heightScale);
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
@@ -89,6 +91,16 @@ class TerrainScene : public Scene {
       _simplePrg->release();
     } else if(_tessellationMethod == TessellationMethod::HARDWARE) {
       _simpleTessPrg->bind();
+
+      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("Ka"), _ambientCoef);
+      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("Kd"), _diffuseCoef);
+      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("Ks"), _specularCoef);
+      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("shininess"), _shininessCoef);
+      Vector3f lightDir = _light.getDirection();
+      Vector3f lightColor = _light.getColor();
+
+      _f->glUniform3fv(_simpleTessPrg->uniformLocation("lightDirection"), 1, lightDir.data());
+      _f->glUniform3fv(_simpleTessPrg->uniformLocation("lightColor"), 1, lightColor.data());
 
       _f->glUniformMatrix4fv(_simpleTessPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
       _f->glUniformMatrix4fv(_simpleTessPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
@@ -196,6 +208,215 @@ class TerrainScene : public Scene {
     displayLayout->addWidget(texturingCB);
 
     return displayGroupBox;
+  }
+
+  QGroupBox* createLightingGroupBox(){
+    QGroupBox * lightingGroupBox = new QGroupBox("Lighting");
+    QVBoxLayout * lightingLayout = new QVBoxLayout;
+    lightingGroupBox->setLayout(lightingLayout);
+
+    QLabel * directionalLightLabel = new QLabel("Directional light:");
+    lightingLayout->addWidget(directionalLightLabel);
+
+    QHBoxLayout * lightAzimuth = new QHBoxLayout;
+    lightingLayout->addLayout(lightAzimuth);
+    
+    QLabel * lAzimuthLabel = new QLabel("Light azimuth :");
+    lightAzimuth->addWidget(lAzimuthLabel);
+
+    QSpinBox * lAzimuthSB = new QSpinBox();
+    lightAzimuth->addWidget(lAzimuthSB);
+    lAzimuthSB->setSingleStep(1);
+    lAzimuthSB->setRange(0, 360);
+    lAzimuthSB->setValue(_light.getAzimuth());
+
+    QSlider * lAzimuthSlider = new QSlider;
+    lightAzimuth->addWidget(lAzimuthSlider);
+    lAzimuthSlider->setOrientation(Qt::Horizontal);
+    lAzimuthSlider->setRange(0, 360);
+    lAzimuthSlider->setValue(_light.getAzimuth());
+
+    QObject::connect(lAzimuthSB, SIGNAL(valueChanged(int)),
+                     lAzimuthSlider, SLOT(setValue(int)));
+    QObject::connect(lAzimuthSlider, SIGNAL(valueChanged(int)),
+                     lAzimuthSB, SLOT(setValue(int)));
+    QObject::connect(lAzimuthSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		     [this](int val){
+		       _light.setAzimuth(val*M_PI/180.);
+		     });
+
+    QHBoxLayout * lightAltitude = new QHBoxLayout;
+    lightingLayout->addLayout(lightAltitude);
+    
+    QLabel * lAltitudeLabel = new QLabel("Light altitude :");
+    lightAltitude->addWidget(lAltitudeLabel);
+
+    QSpinBox * lAltitudeSB = new QSpinBox();
+    lightAltitude->addWidget(lAltitudeSB);
+    lAltitudeSB->setSingleStep(1);
+    lAltitudeSB->setRange(0, 90);
+    lAltitudeSB->setValue(_light.getAltitude());
+
+    QSlider * lAltitudeSlider = new QSlider;
+    lightAltitude->addWidget(lAltitudeSlider);
+    lAltitudeSlider->setOrientation(Qt::Horizontal);
+    lAltitudeSlider->setRange(0, 90);
+    lAltitudeSlider->setValue(_light.getAltitude());
+
+    QObject::connect(lAltitudeSB, SIGNAL(valueChanged(int)),
+                     lAltitudeSlider, SLOT(setValue(int)));
+    QObject::connect(lAltitudeSlider, SIGNAL(valueChanged(int)),
+                     lAltitudeSB, SLOT(setValue(int)));
+    QObject::connect(lAltitudeSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		     [this](int val){
+		       _light.setAltitude(val*M_PI/180.);
+		     });
+
+    QHBoxLayout * lightColor = new QHBoxLayout;
+    lightingLayout->addLayout(lightColor);
+    
+    QLabel * lColorLabel = new QLabel("Light color :");
+    lightColor->addWidget(lColorLabel);
+
+    QPushButton * lColorPicker = new QPushButton;
+    lightColor->addWidget(lColorPicker);
+
+    Vector3f lc = _light.getColor();
+    QString qss = QString("background-color: %1").arg(QColor(lc.x()*255., lc.y()*255., lc.z()*255.).name());
+    lColorPicker->setStyleSheet(qss);
+
+    QObject::connect(lColorPicker, static_cast<void (QPushButton::*)()>(&QPushButton::pressed),
+		     [this, lColorPicker](){
+		       Vector3f lc = _light.getColor();
+		       QColor c = QColorDialog::getColor(QColor(lc.x()*255., lc.y()*255., lc.z()*255.), lColorPicker);
+		       if(c.isValid()) {
+			 QString qss = QString("background-color: %1").arg(c.name());
+			 lColorPicker->setStyleSheet(qss);
+			 _light.setColor(Vector3f(c.red()/255., c.green()/255., c.blue()/255.));
+		       }
+		     });
+    
+    QFrame* line = new QFrame();
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    lightingLayout->addWidget(line);
+    
+    QLabel * materialLabel = new QLabel("Material :");
+    lightingLayout->addWidget(materialLabel);
+
+    //ambient coef
+    QHBoxLayout * ambientLayout = new QHBoxLayout;
+    lightingLayout->addLayout(ambientLayout);
+    
+    QLabel * ambientLabel = new QLabel("Ka :");
+    ambientLayout->addWidget(ambientLabel);
+
+    QSpinBox * ambientSB = new QSpinBox();
+    ambientLayout->addWidget(ambientSB);
+    ambientSB->setSingleStep(1);
+    ambientSB->setRange(0, 100);
+    ambientSB->setValue(50);
+
+    QSlider * ambientSlider = new QSlider;
+    ambientLayout->addWidget(ambientSlider);
+    ambientSlider->setOrientation(Qt::Horizontal);
+    ambientSlider->setRange(0, 100);
+    ambientSlider->setValue(50);
+
+    QObject::connect(ambientSB, SIGNAL(valueChanged(int)),
+                     ambientSlider, SLOT(setValue(int)));
+    QObject::connect(ambientSlider, SIGNAL(valueChanged(int)),
+                     ambientSB, SLOT(setValue(int)));
+    QObject::connect(ambientSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		     [this](int val){
+		       _ambientCoef = val/100.;
+		     });
+
+    //diffuse coef
+    QHBoxLayout * diffuseLayout = new QHBoxLayout;
+    lightingLayout->addLayout(diffuseLayout);
+    
+    QLabel * diffuseLabel = new QLabel("Kd :");
+    diffuseLayout->addWidget(diffuseLabel);
+
+    QSpinBox * diffuseSB = new QSpinBox();
+    diffuseLayout->addWidget(diffuseSB);
+    diffuseSB->setSingleStep(1);
+    diffuseSB->setRange(0, 100);
+    diffuseSB->setValue(50);
+
+    QSlider * diffuseSlider = new QSlider;
+    diffuseLayout->addWidget(diffuseSlider);
+    diffuseSlider->setOrientation(Qt::Horizontal);
+    diffuseSlider->setRange(0, 100);
+    diffuseSlider->setValue(50);
+
+    QObject::connect(diffuseSB, SIGNAL(valueChanged(int)),
+                     diffuseSlider, SLOT(setValue(int)));
+    QObject::connect(diffuseSlider, SIGNAL(valueChanged(int)),
+                     diffuseSB, SLOT(setValue(int)));
+    QObject::connect(diffuseSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		     [this](int val){
+		       _diffuseCoef = val/100.;
+		     });
+    
+    //specular coef
+    QHBoxLayout * specularLayout = new QHBoxLayout;
+    lightingLayout->addLayout(specularLayout);
+    
+    QLabel * specularLabel = new QLabel("Ks :");
+    specularLayout->addWidget(specularLabel);
+
+    QSpinBox * specularSB = new QSpinBox();
+    specularLayout->addWidget(specularSB);
+    specularSB->setSingleStep(1);
+    specularSB->setRange(0, 100);
+    specularSB->setValue(50);
+
+    QSlider * specularSlider = new QSlider;
+    specularLayout->addWidget(specularSlider);
+    specularSlider->setOrientation(Qt::Horizontal);
+    specularSlider->setRange(0, 100);
+    specularSlider->setValue(50);
+
+    QObject::connect(specularSB, SIGNAL(valueChanged(int)),
+                     specularSlider, SLOT(setValue(int)));
+    QObject::connect(specularSlider, SIGNAL(valueChanged(int)),
+                     specularSB, SLOT(setValue(int)));
+    QObject::connect(specularSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		     [this](int val){
+		       _specularCoef = val/100.;
+		     });
+
+    //shininess coef
+    QHBoxLayout * shininessLayout = new QHBoxLayout;
+    lightingLayout->addLayout(shininessLayout);
+    
+    QLabel * shininessLabel = new QLabel("shininess :");
+    shininessLayout->addWidget(shininessLabel);
+
+    QSpinBox * shininessSB = new QSpinBox();
+    shininessLayout->addWidget(shininessSB);
+    shininessSB->setSingleStep(1);
+    shininessSB->setRange(0, 1000);
+    shininessSB->setValue(50);
+
+    QSlider * shininessSlider = new QSlider;
+    shininessLayout->addWidget(shininessSlider);
+    shininessSlider->setOrientation(Qt::Horizontal);
+    shininessSlider->setRange(0, 100);
+    shininessSlider->setValue(50);
+
+    QObject::connect(shininessSB, SIGNAL(valueChanged(int)),
+                     shininessSlider, SLOT(setValue(int)));
+    QObject::connect(shininessSlider, SIGNAL(valueChanged(int)),
+                     shininessSB, SLOT(setValue(int)));
+    QObject::connect(shininessSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		     [this](int val){
+		       _shininessCoef = val/100.;
+		     });
+
+    return lightingGroupBox;
   }
 
   QGroupBox * createTessellationGroupBox(){
@@ -393,7 +614,10 @@ class TerrainScene : public Scene {
   virtual QDockWidget *createDock() {
     QDockWidget *dock = new QDockWidget("Options");
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    QFrame *frame = new QFrame(dock);
+    QScrollArea *scrollArea = new QScrollArea(dock);
+    scrollArea->setWidgetResizable(true);
+    QFrame *frame = new QFrame;
+    //frame->setWidgetResizable(false);
     QVBoxLayout * VLayout = new QVBoxLayout;
 
     QPushButton * reloadShadersButton = new QPushButton;
@@ -409,8 +633,10 @@ class TerrainScene : public Scene {
     VLayout->addWidget(createDisplayGroupBox());
     VLayout->addWidget(createCameraGroupBox());
     VLayout->addWidget(createTessellationGroupBox());
+    VLayout->addWidget(createLightingGroupBox());
     frame->setLayout(VLayout);
-    dock->setWidget(frame);
+    scrollArea->setWidget(frame);
+    dock->setWidget(scrollArea);
     return dock;
   }
     
@@ -432,11 +658,17 @@ class TerrainScene : public Scene {
   QOpenGLShaderProgram * _simplePrg;
   QOpenGLShaderProgram * _simpleTessPrg;
   Terrain _terrain;
+  DirectionalLight _light;
 
-  float _constantInnerTessellationLevel = 1.;
-  float _constantOuterTessellationLevel = 1.;
-  float _adaptativeFactor = 1.;					    
+  float _constantInnerTessellationLevel = 1.f;
+  float _constantOuterTessellationLevel = 1.f;
+  float _adaptativeFactor = 1.f;					    
   float _heightScale = 50.f;
+  float _ambientCoef = 0.5f;
+  float _diffuseCoef = 0.5f;
+  float _specularCoef = 0.5f;
+  float _shininessCoef = 2.f;
+  
   TexturingMode _texMode = TexturingMode::CONST_COLOR;
   DrawMode _drawMode = DrawMode::FILL;
   CameraMode _cameraMode = CameraMode::FREE_FLY;
