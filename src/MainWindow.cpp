@@ -98,20 +98,36 @@ void MainWindow::loadHeightMap() {
   QFileInfo fileInfo(fileName);
   QString fileExtension = fileInfo.suffix();
 
-  cimg_library::CImg<unsigned char> image(fileName.toStdString().c_str());
+  cimg_library::CImg<float> image(fileName.toStdString().c_str());
   std::cout << "img : " << image.width()
 	    << " " << image.height()
 	    << " " << image.depth()
 	    << " " << image.spectrum()
 	    << std::endl;
-  cimg_library::CImgList<float> l = image.get_gradient("xy", 2);
-  l[0].normalize(0.,255.);
-  l[1].normalize(0.,255.);
 
+  image.normalize(0, 65535);
+  cimg_library::CImgList<float> l = image.get_gradient("xy", 2);
+  l[0]+=32768;
+  l[1]+=32768;
+
+  //l[0].save_png("../data/test/sobel1.png");
+  //l[1].save_png("../data/test/sobel2.png");
+
+  
   image.append(l[0], 'c');
   image.append(l[1], 'c');
-  image.save_bmp("../data/heightmaps/tmp.bmp");
-  QImage heightmap("../data/heightmaps/tmp.bmp");
+
+  /*
+  std::cout << "img : " << image.width()
+	    << " " << image.height()
+	    << " " << image.depth()
+	    << " " << image.spectrum()
+	    << std::endl;
+  */
+  //image.print();
+  
+  image.save_png("../data/test/tmp.png");
+  QImage heightmap("../data/test/tmp.png");
   std::cout << "opened heightmap file :" << fileName.toStdString() << '\n';
   
   emit loadedHeightMap(heightmap);

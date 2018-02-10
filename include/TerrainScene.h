@@ -21,11 +21,12 @@ class TerrainScene : public Scene {
     _terrain.setTexture(QImage("../data/textures/rainbow.png"));
 
     loadShaders();
-    
+
+        _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
     _camera->setPosition(Eigen::Vector3f(10, 100, 10));
     _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
     _camera->setViewport(600, 400);
-    _camera->setSpeed(_terrain.getSize().norm() / 4000.f);
+    _camera->setSpeed(_defaultCamSpeed);
 
     _f->glEnable(GL_DEPTH_TEST);
     _f->glClearColor(0.2, 0.2, 0.2, 1.0);
@@ -51,18 +52,6 @@ class TerrainScene : public Scene {
     _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/simpleTess.tesc");
     _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationEvaluation, "../data/shaders/simpleTess.tese");
     _simpleTessPrg->link();
-
-    _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
-    _camera->setPosition(Eigen::Vector3f(10, 100, 10));
-    _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
-    _camera->setViewport(600, 400);
-    _camera->setSpeed(_defaultCamSpeed);
-
-    _f->glEnable(GL_DEPTH_TEST);
-    _f->glClearColor(0.2, 0.2, 0.2, 1.0);
-    _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
   }
 
   void render() override {
