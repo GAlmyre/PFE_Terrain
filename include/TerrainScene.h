@@ -5,6 +5,9 @@
 #include "Terrain.h"
 #include "DirectionalLight.h"
 
+#include "VariableOption.h"
+#include "ComboBoxOption.h"
+
 using namespace Eigen;
 
 class TerrainScene : public Scene {
@@ -162,50 +165,37 @@ class TerrainScene : public Scene {
     QGroupBox * displayGroupBox = new QGroupBox("Display");
     QVBoxLayout * displayLayout = new QVBoxLayout;
     displayGroupBox->setLayout(displayLayout);
-    
-    QLabel * drawModeLabel = new QLabel();
-    drawModeLabel->setText("Drawing mode :");
-    displayLayout->addWidget(drawModeLabel);
-    
-    QComboBox * drawModeCB = new QComboBox();
-    drawModeCB->setEditable(false);
-    drawModeCB->addItem("Fill", DrawMode::FILL);
-    drawModeCB->addItem("Wire-frame", DrawMode::WIREFRAME);
-    drawModeCB->addItem("Fill + wire-frame", DrawMode::FILL_AND_WIREFRAME);
-    
-    QObject::connect(drawModeCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
-		     [this, drawModeCB](int ind) {
-		       int data = drawModeCB->itemData(ind).toInt();
+
+    //Draw mode selection
+    ComboBoxOption * drawMode = new ComboBoxOption("Drawing mode : ");
+    drawMode->addItem("Fill", DrawMode::FILL);
+    drawMode->addItem("Wire-frame", DrawMode::WIREFRAME);
+    drawMode->addItem("Fill + wire-frame", DrawMode::FILL_AND_WIREFRAME);
+    QObject::connect(drawMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
+		     [this](int data) {
 		       _drawMode = (DrawMode)data;
 		     });
-    
-    displayLayout->addWidget(drawModeCB);
-    
+    displayLayout->addWidget(drawMode);
+
+    //Separator
     QFrame* line = new QFrame();
     line->setFrameShape(QFrame::HLine);
     line->setFrameShadow(QFrame::Sunken);
     displayLayout->addWidget(line);
-    
-    QLabel * texturingLabel = new QLabel();
-    texturingLabel->setText("Texturing mode :");
-    displayLayout->addWidget(texturingLabel);
-    
-    QComboBox * texturingCB = new QComboBox();
-    texturingCB->setEditable(false);
-    texturingCB->addItem("Constant color", TexturingMode::CONST_COLOR);
-    texturingCB->addItem("Texture", TexturingMode::TEXTURE);
-    texturingCB->addItem("Height map", TexturingMode::HEIGHTMAP);
-    texturingCB->addItem("Normal map", TexturingMode::NORMALS);
-    texturingCB->addItem("Texture coordinates", TexturingMode::TEXCOORDS);
-    texturingCB->addItem("Tessellation level", TexturingMode::TESSLEVEL);
-    
-    QObject::connect(texturingCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
-		     [this, texturingCB](int ind) {
-		       int data = texturingCB->itemData(ind).toInt();
+
+    //Texturing mode selection
+    ComboBoxOption * textureMode = new ComboBoxOption("Texturing mode : ");
+    textureMode->addItem("Constant color", TexturingMode::CONST_COLOR);
+    textureMode->addItem("Texture", TexturingMode::TEXTURE);
+    textureMode->addItem("Height map", TexturingMode::HEIGHTMAP);
+    textureMode->addItem("Normal map", TexturingMode::NORMALS);
+    textureMode->addItem("Texture coordinates", TexturingMode::TEXCOORDS);
+    textureMode->addItem("Tessellation level", TexturingMode::TESSLEVEL);
+    QObject::connect(textureMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
+		     [this](int data) {
 		       _texMode = (TexturingMode)data;
 		     });
-    
-    displayLayout->addWidget(texturingCB);
+    displayLayout->addWidget(textureMode);
 
     return displayGroupBox;
   }
@@ -215,63 +205,26 @@ class TerrainScene : public Scene {
     QVBoxLayout * lightingLayout = new QVBoxLayout;
     lightingGroupBox->setLayout(lightingLayout);
 
-    QLabel * directionalLightLabel = new QLabel("Directional light:");
-    lightingLayout->addWidget(directionalLightLabel);
-
-    QHBoxLayout * lightAzimuth = new QHBoxLayout;
-    lightingLayout->addLayout(lightAzimuth);
-    
-    QLabel * lAzimuthLabel = new QLabel("Light azimuth :");
-    lightAzimuth->addWidget(lAzimuthLabel);
-
-    QSpinBox * lAzimuthSB = new QSpinBox();
-    lightAzimuth->addWidget(lAzimuthSB);
-    lAzimuthSB->setSingleStep(1);
-    lAzimuthSB->setRange(0, 360);
-    lAzimuthSB->setValue(_light.getAzimuth());
-
-    QSlider * lAzimuthSlider = new QSlider;
-    lightAzimuth->addWidget(lAzimuthSlider);
-    lAzimuthSlider->setOrientation(Qt::Horizontal);
-    lAzimuthSlider->setRange(0, 360);
-    lAzimuthSlider->setValue(_light.getAzimuth());
-
-    QObject::connect(lAzimuthSB, SIGNAL(valueChanged(int)),
-                     lAzimuthSlider, SLOT(setValue(int)));
-    QObject::connect(lAzimuthSlider, SIGNAL(valueChanged(int)),
-                     lAzimuthSB, SLOT(setValue(int)));
-    QObject::connect(lAzimuthSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-		     [this](int val){
+    VariableOption * lightAzimuth = new VariableOption("Light azimuth :", 20, 0, 360, 0.5);
+    QObject::connect(lightAzimuth, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
 		       _light.setAzimuth(val*M_PI/180.);
 		     });
 
-    QHBoxLayout * lightAltitude = new QHBoxLayout;
-    lightingLayout->addLayout(lightAltitude);
-    
-    QLabel * lAltitudeLabel = new QLabel("Light altitude :");
-    lightAltitude->addWidget(lAltitudeLabel);
+    lightingLayout->addWidget(lightAzimuth);
 
-    QSpinBox * lAltitudeSB = new QSpinBox();
-    lightAltitude->addWidget(lAltitudeSB);
-    lAltitudeSB->setSingleStep(1);
-    lAltitudeSB->setRange(0, 90);
-    lAltitudeSB->setValue(_light.getAltitude());
 
-    QSlider * lAltitudeSlider = new QSlider;
-    lightAltitude->addWidget(lAltitudeSlider);
-    lAltitudeSlider->setOrientation(Qt::Horizontal);
-    lAltitudeSlider->setRange(0, 90);
-    lAltitudeSlider->setValue(_light.getAltitude());
 
-    QObject::connect(lAltitudeSB, SIGNAL(valueChanged(int)),
-                     lAltitudeSlider, SLOT(setValue(int)));
-    QObject::connect(lAltitudeSlider, SIGNAL(valueChanged(int)),
-                     lAltitudeSB, SLOT(setValue(int)));
-    QObject::connect(lAltitudeSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-		     [this](int val){
+    VariableOption * lightAltitude = new VariableOption("Light altitude :", 20, 0, 180, 0.5);
+    QObject::connect(lightAltitude, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
 		       _light.setAltitude(val*M_PI/180.);
 		     });
 
+    lightingLayout->addWidget(lightAltitude); 
+
+
+    //Light color selection button
     QHBoxLayout * lightColor = new QHBoxLayout;
     lightingLayout->addLayout(lightColor);
     
@@ -295,127 +248,53 @@ class TerrainScene : public Scene {
 			 _light.setColor(Vector3f(c.red()/255., c.green()/255., c.blue()/255.));
 		       }
 		     });
-    
+
+    //Separator
     QFrame* line = new QFrame();
     line->setFrameShape(QFrame::HLine);
     line->setFrameShadow(QFrame::Sunken);
     lightingLayout->addWidget(line);
-    
+
+    //Material label
     QLabel * materialLabel = new QLabel("Material :");
     lightingLayout->addWidget(materialLabel);
 
     //ambient coef
-    QHBoxLayout * ambientLayout = new QHBoxLayout;
-    lightingLayout->addLayout(ambientLayout);
-    
-    QLabel * ambientLabel = new QLabel("Ka :");
-    ambientLayout->addWidget(ambientLabel);
-
-    QSpinBox * ambientSB = new QSpinBox();
-    ambientLayout->addWidget(ambientSB);
-    ambientSB->setSingleStep(1);
-    ambientSB->setRange(0, 100);
-    ambientSB->setValue(50);
-
-    QSlider * ambientSlider = new QSlider;
-    ambientLayout->addWidget(ambientSlider);
-    ambientSlider->setOrientation(Qt::Horizontal);
-    ambientSlider->setRange(0, 100);
-    ambientSlider->setValue(50);
-
-    QObject::connect(ambientSB, SIGNAL(valueChanged(int)),
-                     ambientSlider, SLOT(setValue(int)));
-    QObject::connect(ambientSlider, SIGNAL(valueChanged(int)),
-                     ambientSB, SLOT(setValue(int)));
-    QObject::connect(ambientSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-		     [this](int val){
-		       _ambientCoef = val/100.;
+    VariableOption * ambientCoef = new VariableOption("Ka :", _ambientCoef, 0, 1, 0.01);
+    QObject::connect(ambientCoef, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
+		       _ambientCoef = val;
 		     });
 
+    lightingLayout->addWidget(ambientCoef);
+    
     //diffuse coef
-    QHBoxLayout * diffuseLayout = new QHBoxLayout;
-    lightingLayout->addLayout(diffuseLayout);
-    
-    QLabel * diffuseLabel = new QLabel("Kd :");
-    diffuseLayout->addWidget(diffuseLabel);
-
-    QSpinBox * diffuseSB = new QSpinBox();
-    diffuseLayout->addWidget(diffuseSB);
-    diffuseSB->setSingleStep(1);
-    diffuseSB->setRange(0, 100);
-    diffuseSB->setValue(50);
-
-    QSlider * diffuseSlider = new QSlider;
-    diffuseLayout->addWidget(diffuseSlider);
-    diffuseSlider->setOrientation(Qt::Horizontal);
-    diffuseSlider->setRange(0, 100);
-    diffuseSlider->setValue(50);
-
-    QObject::connect(diffuseSB, SIGNAL(valueChanged(int)),
-                     diffuseSlider, SLOT(setValue(int)));
-    QObject::connect(diffuseSlider, SIGNAL(valueChanged(int)),
-                     diffuseSB, SLOT(setValue(int)));
-    QObject::connect(diffuseSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-		     [this](int val){
-		       _diffuseCoef = val/100.;
+    VariableOption * diffuseCoef = new VariableOption("Kd :", _diffuseCoef, 0, 1, 0.01);
+    QObject::connect(diffuseCoef, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
+		       _diffuseCoef = val;
 		     });
-    
+
+    lightingLayout->addWidget(diffuseCoef);
+
     //specular coef
-    QHBoxLayout * specularLayout = new QHBoxLayout;
-    lightingLayout->addLayout(specularLayout);
-    
-    QLabel * specularLabel = new QLabel("Ks :");
-    specularLayout->addWidget(specularLabel);
-
-    QSpinBox * specularSB = new QSpinBox();
-    specularLayout->addWidget(specularSB);
-    specularSB->setSingleStep(1);
-    specularSB->setRange(0, 100);
-    specularSB->setValue(50);
-
-    QSlider * specularSlider = new QSlider;
-    specularLayout->addWidget(specularSlider);
-    specularSlider->setOrientation(Qt::Horizontal);
-    specularSlider->setRange(0, 100);
-    specularSlider->setValue(50);
-
-    QObject::connect(specularSB, SIGNAL(valueChanged(int)),
-                     specularSlider, SLOT(setValue(int)));
-    QObject::connect(specularSlider, SIGNAL(valueChanged(int)),
-                     specularSB, SLOT(setValue(int)));
-    QObject::connect(specularSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-		     [this](int val){
-		       _specularCoef = val/100.;
+    VariableOption * specularCoef = new VariableOption("Ks :", _specularCoef, 0, 1, 0.01);
+    QObject::connect(specularCoef, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
+		       _specularCoef = val;
 		     });
 
+    lightingLayout->addWidget(specularCoef);
+    
     //shininess coef
-    QHBoxLayout * shininessLayout = new QHBoxLayout;
-    lightingLayout->addLayout(shininessLayout);
-    
-    QLabel * shininessLabel = new QLabel("shininess :");
-    shininessLayout->addWidget(shininessLabel);
-
-    QSpinBox * shininessSB = new QSpinBox();
-    shininessLayout->addWidget(shininessSB);
-    shininessSB->setSingleStep(1);
-    shininessSB->setRange(0, 1000);
-    shininessSB->setValue(50);
-
-    QSlider * shininessSlider = new QSlider;
-    shininessLayout->addWidget(shininessSlider);
-    shininessSlider->setOrientation(Qt::Horizontal);
-    shininessSlider->setRange(0, 100);
-    shininessSlider->setValue(50);
-
-    QObject::connect(shininessSB, SIGNAL(valueChanged(int)),
-                     shininessSlider, SLOT(setValue(int)));
-    QObject::connect(shininessSlider, SIGNAL(valueChanged(int)),
-                     shininessSB, SLOT(setValue(int)));
-    QObject::connect(shininessSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-		     [this](int val){
-		       _shininessCoef = val/100.;
+    VariableOption * shininessCoef = new VariableOption("shininess :", _shininessCoef, 0, 100, 0.01);
+    QObject::connect(shininessCoef, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
+		       _shininessCoef = val;
 		     });
 
+    lightingLayout->addWidget(shininessCoef);
+    
     return lightingGroupBox;
   }
 
@@ -423,48 +302,39 @@ class TerrainScene : public Scene {
     QGroupBox * tessellationGroupBox = new QGroupBox("Tessellation");
     QVBoxLayout * tessellationLayout = new QVBoxLayout;
     tessellationGroupBox->setLayout(tessellationLayout);
-    
-    QLabel * tessellationMethodLabel = new QLabel();
-    tessellationMethodLabel->setText("Tessellation method :");
-    tessellationLayout->addWidget(tessellationMethodLabel);
-    
-    QComboBox * tessellationMethodCB = new QComboBox();
-    tessellationMethodCB->setEditable(false);
-    tessellationMethodCB->addItem("No tessellation", TessellationMethod::NO_TESSELLATION);
-    tessellationMethodCB->addItem("Hardware tessellation", TessellationMethod::HARDWARE);
-    tessellationMethodCB->addItem("Patch instanciation", TessellationMethod::INSTANCIATION);
-    
-    QObject::connect(tessellationMethodCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
-		     [this, tessellationMethodCB](int ind) {
-		       int data = tessellationMethodCB->itemData(ind).toInt();
+
+    //Tessellation method selection
+    ComboBoxOption * tessMethod = new ComboBoxOption("Tessellation method : ");
+    tessMethod->addItem("No tessellation", TessellationMethod::NO_TESSELLATION);
+    tessMethod->addItem("Hardware tessellation", TessellationMethod::HARDWARE);
+    tessMethod->addItem("Patch instanciation", TessellationMethod::INSTANCIATION);
+
+    QObject::connect(tessMethod, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
+		     [this](int data) {
 		       _tessellationMethod = (TessellationMethod)data;
 		     });
     
-    tessellationLayout->addWidget(tessellationMethodCB);
-    
+    tessellationLayout->addWidget(tessMethod);
+
+    //Separator
     QFrame* line = new QFrame();
     line->setFrameShape(QFrame::HLine);
     line->setFrameShadow(QFrame::Sunken);
     tessellationLayout->addWidget(line);
-    
-    QLabel * tessellationModeLabel = new QLabel();
-    tessellationModeLabel->setText("Tessellation mode :");
-    tessellationLayout->addWidget(tessellationModeLabel);
-    
-    QComboBox * tessellationModeCB = new QComboBox();
-    tessellationModeCB->setEditable(false);
-    tessellationModeCB->addItem("Constant", TessellationMode::CONSTANT);
-    tessellationModeCB->addItem("Adaptative from POV", TessellationMode::ADAPTATIVE_FROM_POV);
-    tessellationModeCB->addItem("Adaptative from marker", TessellationMode::ADAPTATIVE_FROM_FIXED_POINT);
+
+    //Tessellation mode selection
+    ComboBoxOption * tessMode = new ComboBoxOption("Tesselation mode : ");
+    tessMode->addItem("Constant", TessellationMode::CONSTANT);
+    tessMode->addItem("Adaptative from POV", TessellationMode::ADAPTATIVE_FROM_POV);
+    tessMode->addItem("Adaptative from marker", TessellationMode::ADAPTATIVE_FROM_FIXED_POINT);
 
     QFrame * constantModeSubMenu = new QFrame();
     constantModeSubMenu->setVisible(true);
     QFrame * adaptativeModeSubMenu = new QFrame();
     adaptativeModeSubMenu->setVisible(false);
     
-    QObject::connect(tessellationModeCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
-		     [this, tessellationModeCB, constantModeSubMenu, adaptativeModeSubMenu](int ind) {
-		       int data = tessellationModeCB->itemData(ind).toInt();
+    QObject::connect(tessMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
+		     [this, constantModeSubMenu, adaptativeModeSubMenu](int data) {
 		       _tessellationMode = (TessellationMode)data;
 		       switch(_tessellationMode){
 		       case TessellationMode::CONSTANT:
@@ -479,83 +349,62 @@ class TerrainScene : public Scene {
 		       }
 		     });
     
-    tessellationLayout->addWidget(tessellationModeCB);
+    tessellationLayout->addWidget(tessMode);
     tessellationLayout->addWidget(constantModeSubMenu);
     tessellationLayout->addWidget(adaptativeModeSubMenu);
 
-    QFormLayout * constantModeLayout = new QFormLayout;
-    constantModeSubMenu->setLayout(constantModeLayout);
-    QDoubleSpinBox * innerLvlSB = new QDoubleSpinBox;
-    innerLvlSB->setSingleStep(0.1);
-    innerLvlSB->setRange(1., 64.);
-    QDoubleSpinBox * outerLvlSB = new QDoubleSpinBox;
-    outerLvlSB->setSingleStep(0.1);
-    outerLvlSB->setRange(1., 64.);
+    
 
-    QObject::connect(innerLvlSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
-		     [this, outerLvlSB](double val){
+    
+    QVBoxLayout * constantModeLayout = new QVBoxLayout;
+    constantModeLayout->setContentsMargins(0,0,0,0);
+    constantModeSubMenu->setLayout(constantModeLayout);
+
+    VariableOption * innerLvl = new VariableOption("Inner level", 1, 1, 64, 0.1);
+    QObject::connect(innerLvl, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
 		       _constantInnerTessellationLevel = val;
 		     });
-    QObject::connect(outerLvlSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+    VariableOption * outerLvl = new VariableOption("Outer level", 1, 1, 64, 0.1);
+    QObject::connect(outerLvl, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
 		     [this](double val){
 		       _constantOuterTessellationLevel = val;
 		     });
-    constantModeLayout->addRow("Inner level", innerLvlSB);
-    constantModeLayout->addRow("Outer level", outerLvlSB);
+    constantModeLayout->addWidget(innerLvl);
+    constantModeLayout->addWidget(outerLvl);
 
-
-    QFormLayout * adaptativeModeLayout = new QFormLayout;
+    QVBoxLayout * adaptativeModeLayout = new QVBoxLayout;
+    adaptativeModeLayout->setContentsMargins(0,0,0,0);
     adaptativeModeSubMenu->setLayout(adaptativeModeLayout);
 
-    QComboBox * adaptativeTessModeCB = new QComboBox();
-    adaptativeTessModeCB->setEditable(false);
-    adaptativeTessModeCB->addItem("Distance", AdaptativeMode::DISTANCE);
-    adaptativeTessModeCB->addItem("Viewspace", AdaptativeMode::VIEWSPACE);
-    QObject::connect(adaptativeTessModeCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
-		     [this, adaptativeTessModeCB](int ind) {
-		       int data = adaptativeTessModeCB->itemData(ind).toInt();
+    ComboBoxOption * adaptativeTessMode = new ComboBoxOption("LOD method");
+    adaptativeTessMode->addItem("Distance", AdaptativeMode::DISTANCE);
+    adaptativeTessMode->addItem("Viewspace", AdaptativeMode::VIEWSPACE);
+    QObject::connect(adaptativeTessMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
+		     [this](int data) {
 		       _adaptativeTessellationMode = (AdaptativeMode)data;
 		     });
-    
-    QDoubleSpinBox * adaptativeFactorSB = new QDoubleSpinBox;
-    innerLvlSB->setSingleStep(0.1);
-    innerLvlSB->setRange(0., 100);
 
-    QObject::connect(adaptativeFactorSB, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged),
+    VariableOption * adaptativeFactor = new VariableOption("Adaptative LOD factor", 1, 0.05, 10, 0.05);
+    QObject::connect(adaptativeFactor, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
 		     [this](double val){
 		       _adaptativeFactor = val;
 		     });
-    adaptativeModeLayout->addRow("LOD method", adaptativeTessModeCB);
-    adaptativeModeLayout->addRow("Adaptative LOD factor", adaptativeFactorSB);
+    adaptativeModeLayout->addWidget(adaptativeTessMode);
+    adaptativeModeLayout->addWidget(adaptativeFactor);
     
+    //Separator
+    QFrame* line2 = new QFrame();
+    line2->setFrameShape(QFrame::HLine);
+    line2->setFrameShadow(QFrame::Sunken);
+    tessellationLayout->addWidget(line2);
 
-    tessellationLayout->addWidget(new QLabel("Height Scale Factor :"));
-
-    QHBoxLayout * scaleLayout = new QHBoxLayout;
-    QSpinBox * scaleSB = new QSpinBox();
-    scaleSB->setMinimum(0);
-    scaleSB->setMaximum(200);
-    scaleSB->setSingleStep(1);
-    scaleSB->setValue(50);
-    QSlider * scaleSlider = new QSlider();
-    scaleSlider->setOrientation(Qt::Horizontal);
-    scaleSlider->setMinimum(0);
-    scaleSlider->setMaximum(200);
-    scaleSlider->setValue(50);
-
-    QObject::connect(scaleSB, SIGNAL(valueChanged(int)),
-                     scaleSlider, SLOT(setValue(int)));
-    QObject::connect(scaleSlider, SIGNAL(valueChanged(int)),
-                     scaleSB, SLOT(setValue(int)));
-    QObject::connect(scaleSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-     [this](int val){
+    VariableOption * heightScaleFactor = new VariableOption("Height scale factor :", 50, 0, 200, 1);
+    tessellationLayout->addWidget(heightScaleFactor);
+    QObject::connect(heightScaleFactor, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+     [this](double val){
        _heightScale = val;
      });
-    scaleLayout->addWidget(scaleSB);
-    scaleLayout->addWidget(scaleSlider);
-
-    tessellationLayout->addLayout(scaleLayout);
-
     return tessellationGroupBox;
   }
 
@@ -564,49 +413,21 @@ class TerrainScene : public Scene {
     QVBoxLayout *cameraLayout = new QVBoxLayout;
     cameraGroupBox->setLayout(cameraLayout);
 
-    QLabel * cameraModeLabel = new QLabel();
-    cameraModeLabel->setText("Camera mode :");
-
-    QComboBox * cameraModeCB = new QComboBox();
-    cameraModeCB->setEditable(false);
-    cameraModeCB->addItem("FreeFly", CameraMode::FREE_FLY);
-    
-    QObject::connect(cameraModeCB, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
-		     [this, cameraModeCB](int ind) {
-		       int data = cameraModeCB->itemData(ind).toInt();
+    ComboBoxOption * cameraMode = new ComboBoxOption("Camera mode :");
+    cameraMode->addItem("FreeFly", CameraMode::FREE_FLY);
+    QObject::connect(cameraMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
+		     [this](int data) {
 		       _cameraMode = (CameraMode)data;
 		     });
     
-    cameraLayout->addWidget(cameraModeCB);
-    
-    QLabel * cameraSpeedLabel = new QLabel();
-    cameraSpeedLabel->setText("Camera speed :");
-    cameraLayout->addWidget(cameraSpeedLabel);
+    cameraLayout->addWidget(cameraMode);
 
-    QHBoxLayout * cameraSpeedLayout = new QHBoxLayout;
-    QSpinBox * cameraSpeedSB = new QSpinBox();
-    cameraSpeedSB->setMinimum(0);
-    cameraSpeedSB->setMaximum(30);
-    cameraSpeedSB->setSingleStep(1);
-    cameraSpeedSB->setValue(15);
-    QSlider * cameraSpeedSlider = new QSlider();
-    cameraSpeedSlider->setOrientation(Qt::Horizontal);
-    cameraSpeedSlider->setMinimum(0);
-    cameraSpeedSlider->setMaximum(30);
-    cameraSpeedSlider->setValue(15);
-    
-    QObject::connect(cameraSpeedSB, SIGNAL(valueChanged(int)),
-		     cameraSpeedSlider, SLOT(setValue(int)));
-    QObject::connect(cameraSpeedSlider, SIGNAL(valueChanged(int)),
-		     cameraSpeedSB, SLOT(setValue(int)));
-    QObject::connect(cameraSpeedSB, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-		     [this](int val){
+    VariableOption * cameraSpeed = new VariableOption("Camera speed : ", 15, 1, 30, 1);
+    QObject::connect(cameraSpeed, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
 		       _camera->setSpeed(_defaultCamSpeed * val / 15.f);
 		     });
-    cameraSpeedLayout->addWidget(cameraSpeedSB);
-    cameraSpeedLayout->addWidget(cameraSpeedSlider);
-
-    cameraLayout->addLayout(cameraSpeedLayout);
+    cameraLayout->addWidget(cameraSpeed);
 
     return cameraGroupBox;
   }
@@ -664,9 +485,9 @@ class TerrainScene : public Scene {
   float _constantOuterTessellationLevel = 1.f;
   float _adaptativeFactor = 1.f;					    
   float _heightScale = 50.f;
-  float _ambientCoef = 0.5f;
-  float _diffuseCoef = 0.5f;
-  float _specularCoef = 0.5f;
+  float _ambientCoef = 0.4f;
+  float _diffuseCoef = 0.8f;
+  float _specularCoef = 0.1f;
   float _shininessCoef = 2.f;
   
   TexturingMode _texMode = TexturingMode::CONST_COLOR;
