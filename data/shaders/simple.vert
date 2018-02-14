@@ -14,6 +14,7 @@ out FragData {
   vec3 viewDirection;
   vec2 texcoord;
   float tessLevel;
+  float distance;
 } vs_to_fs;
 //*/
 //*

@@ -22,6 +22,7 @@ in FragData {
   vec3 viewDirection;
   vec2 texcoord;
   float tessLevel;
+  float distance;
 } fs_in;
 
 out vec4 out_color;
@@ -46,7 +47,7 @@ vec3 normalFromTexcoords(vec2 uv, float elevation){
   return normalize(cross(v, u));
 }
 
-vec3 shade(vec3 N, vec3 L, vec3 V, 
+vec3 shade(vec3 N, vec3 L, vec3 V,
            vec3 color, float Ka, float Kd, float Ks,
            vec3 lightCol, float shininess){
 
@@ -78,11 +79,12 @@ void main(void) {
       float sh = 50;
       vec3 lc = vec3(1,1,1);
       vec3 ld = normalize(vec3(1,1,1));
-      
+
       vec3 normal = normalFromTexcoords(fs_in.texcoord, heightScale);
       vec3 diffuse = texture(texturemap, fs_in.texcoord.xy).xyz;
       vec3 color = shade(normal, normalize(lightDirection), normalize(fs_in.viewDirection), diffuse, Ka, Kd, Ks, lightColor, shininess);
-      out_color = vec4(color, 1);
+      out_color = vec4(mix(color, vec3(.5,.5,.5), fs_in.distance/1200.), 1);
+      //out_color = vec4(vec3(fs_in.distance/600.,0,0), 1);
       /*
       float Ka = 0.4;
       float Kd = 0.8;
@@ -110,7 +112,7 @@ void main(void) {
     case TEXTURING_MODE_TESSLEVEL:
       out_color = colormap(fs_in.tessLevel / 64.);
       break;
-    } 
+    }
   }
 }
 
