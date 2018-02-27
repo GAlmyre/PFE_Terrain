@@ -34,4 +34,5 @@ void main()
   vs_to_fs.viewDirection = -gl_Position.xyz;
   vs_to_fs.texcoord = vtx_texcoord;
   vs_to_fs.tessLevel = 1.f;
+  vs_to_fs.distance = length((view*model*vec4(vtx_position,1.)).xyz);
 }

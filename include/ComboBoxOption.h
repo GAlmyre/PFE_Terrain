@@ -32,7 +32,11 @@ class ComboBoxOption : public QWidget {
  void addItem(std::string name, int data){
    _comboBox->addItem(name.c_str(), data); 
  }
-  
+
+ void setCurrentIndex(int ind){
+   _comboBox->setCurrentIndex(ind);
+ }
+ 
   private slots :
     void comboBoxActivated(int val) {emit activated(_comboBox->itemData(val).toInt());}
    

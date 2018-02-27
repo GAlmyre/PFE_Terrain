@@ -14,6 +14,8 @@ uniform float Ka;
 uniform float Kd;
 uniform float Ks;
 uniform float shininess;
+uniform float distanceFog;
+uniform vec3 fogColor;
 
 uniform vec3 lightDirection;
 uniform vec3 lightColor;
@@ -83,7 +85,9 @@ void main(void) {
       vec3 normal = normalFromTexcoords(fs_in.texcoord, heightScale);
       vec3 diffuse = texture(texturemap, fs_in.texcoord.xy).xyz;
       vec3 color = shade(normal, normalize(lightDirection), normalize(fs_in.viewDirection), diffuse, Ka, Kd, Ks, lightColor, shininess);
-      out_color = vec4(mix(color, vec3(.5,.5,.5), fs_in.distance/1400.), 1);
+      if(distanceFog > 0)
+	color = mix(color, fogColor, min(1., fs_in.distance/distanceFog));
+    out_color = vec4(color, 1);
       //out_color = vec4(vec3(fs_in.distance/600.,0,0), 1);
       /*
       float Ka = 0.4;

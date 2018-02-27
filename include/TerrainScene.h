@@ -18,7 +18,7 @@ class TerrainScene : public Scene {
   enum CameraMode {FREE_FLY};
   enum TessellationMethod {NO_TESSELLATION, HARDWARE, INSTANCIATION};
   enum TessellationMode {CONSTANT = 0, ADAPTATIVE_FROM_POV, ADAPTATIVE_FROM_FIXED_POINT};
-  enum AdaptativeMode {DISTANCE = 1, VIEWSPACE = 2};
+  enum AdaptativeMode {DISTANCE = 0, VIEWSPACE = 1};
   
   void initialize() override {
     //_terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
@@ -75,6 +75,19 @@ class TerrainScene : public Scene {
       _f->glUniform1f(_simplePrg->uniformLocation("heightScale"), _heightScale);
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+      _simplePrg->setUniformValue(_simplePrg->uniformLocation("Ka"), _ambientCoef);
+      _simplePrg->setUniformValue(_simplePrg->uniformLocation("Kd"), _diffuseCoef);
+      _simplePrg->setUniformValue(_simplePrg->uniformLocation("Ks"), _specularCoef);
+      _simplePrg->setUniformValue(_simplePrg->uniformLocation("shininess"), _shininessCoef);
+      _simplePrg->setUniformValue(_simplePrg->uniformLocation("distanceFog"), _distFog);
+      _f->glUniform3fv(_simplePrg->uniformLocation("fogColor"), 1, _fogColor.data()); 
+      Vector3f lightDir = _light.getDirection();
+      Vector3f lightColor = _light.getColor();
+
+      _f->glUniform3fv(_simplePrg->uniformLocation("lightDirection"), 1, lightDir.data());
+      _f->glUniform3fv(_simplePrg->uniformLocation("lightColor"), 1, lightColor.data());
+
+      
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
         _f->glDepthFunc(GL_LESS);
         _simplePrg->setUniformValue(_simplePrg->uniformLocation("wireframe"), false);
@@ -99,6 +112,8 @@ class TerrainScene : public Scene {
       _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("Kd"), _diffuseCoef);
       _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("Ks"), _specularCoef);
       _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("shininess"), _shininessCoef);
+      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("distanceFog"), _distFog);
+      _f->glUniform3fv(_simpleTessPrg->uniformLocation("fogColor"), 1, _fogColor.data());
       Vector3f lightDir = _light.getDirection();
       Vector3f lightColor = _light.getColor();
 
@@ -120,7 +135,7 @@ class TerrainScene : public Scene {
       if (_tessellationMode == TessellationMode::CONSTANT)
         _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), TessellationMode::CONSTANT);
       else
-        _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode);
+        _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode+1);
       if (_tessellationMode == ADAPTATIVE_FROM_POV) {
         _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
       } else if (_tessellationMode == ADAPTATIVE_FROM_FIXED_POINT) {
@@ -171,6 +186,7 @@ class TerrainScene : public Scene {
     drawMode->addItem("Fill", DrawMode::FILL);
     drawMode->addItem("Wire-frame", DrawMode::WIREFRAME);
     drawMode->addItem("Fill + wire-frame", DrawMode::FILL_AND_WIREFRAME);
+    drawMode->setCurrentIndex(_drawMode);
     QObject::connect(drawMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
 		     [this](int data) {
 		       _drawMode = (DrawMode)data;
@@ -191,6 +207,7 @@ class TerrainScene : public Scene {
     textureMode->addItem("Normal map", TexturingMode::NORMALS);
     textureMode->addItem("Texture coordinates", TexturingMode::TEXCOORDS);
     textureMode->addItem("Tessellation level", TexturingMode::TESSLEVEL);
+    textureMode->setCurrentIndex(_texMode);
     QObject::connect(textureMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
 		     [this](int data) {
 		       _texMode = (TexturingMode)data;
@@ -294,6 +311,46 @@ class TerrainScene : public Scene {
 		     });
 
     lightingLayout->addWidget(shininessCoef);
+
+    //Separator
+    QFrame* line2 = new QFrame();
+    line2->setFrameShape(QFrame::HLine);
+    line2->setFrameShadow(QFrame::Sunken);
+    lightingLayout->addWidget(line2);
+
+    VariableOption * distFog = new VariableOption("Distance fog :", _distFog, 0, 5000, 1);
+    QObject::connect(distFog, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
+		       _distFog = val;
+		     });
+
+    lightingLayout->addWidget(distFog);
+
+    //Light color selection button
+    QHBoxLayout * fogColor = new QHBoxLayout;
+    lightingLayout->addLayout(fogColor);
+    
+    QLabel * fogColorLabel = new QLabel("Fog color :");
+    fogColor->addWidget(fogColorLabel);
+
+    QPushButton * fogColorPicker = new QPushButton;
+    fogColor->addWidget(fogColorPicker);
+
+    Vector3f fc = _light.getColor();
+    QString qssf = QString("background-color: %1").arg(QColor(fc.x()*255., fc.y()*255., fc.z()*255.).name());
+    fogColorPicker->setStyleSheet(qssf);
+
+    QObject::connect(fogColorPicker, static_cast<void (QPushButton::*)()>(&QPushButton::pressed),
+		     [this, fogColorPicker](){
+		       Vector3f fc = _fogColor;
+		       QColor c = QColorDialog::getColor(QColor(fc.x()*255., fc.y()*255., fc.z()*255.), fogColorPicker);
+		       if(c.isValid()) {
+			 QString qss = QString("background-color: %1").arg(c.name());
+			 fogColorPicker->setStyleSheet(qss);
+			 _fogColor = Vector3f(c.red()/255., c.green()/255., c.blue()/255.);
+		       }
+		     });
+
     
     return lightingGroupBox;
   }
@@ -308,7 +365,7 @@ class TerrainScene : public Scene {
     tessMethod->addItem("No tessellation", TessellationMethod::NO_TESSELLATION);
     tessMethod->addItem("Hardware tessellation", TessellationMethod::HARDWARE);
     tessMethod->addItem("Patch instanciation", TessellationMethod::INSTANCIATION);
-
+    tessMethod->setCurrentIndex(_tessellationMethod);
     QObject::connect(tessMethod, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
 		     [this](int data) {
 		       _tessellationMethod = (TessellationMethod)data;
@@ -327,11 +384,11 @@ class TerrainScene : public Scene {
     tessMode->addItem("Constant", TessellationMode::CONSTANT);
     tessMode->addItem("Adaptative from POV", TessellationMode::ADAPTATIVE_FROM_POV);
     tessMode->addItem("Adaptative from marker", TessellationMode::ADAPTATIVE_FROM_FIXED_POINT);
-
+    tessMode->setCurrentIndex(_tessellationMode);
     QFrame * constantModeSubMenu = new QFrame();
-    constantModeSubMenu->setVisible(true);
+    constantModeSubMenu->setVisible((_tessellationMode == TessellationMode::CONSTANT)? true : false);
     QFrame * adaptativeModeSubMenu = new QFrame();
-    adaptativeModeSubMenu->setVisible(false);
+    adaptativeModeSubMenu->setVisible((_tessellationMode == TessellationMode::CONSTANT)? false : true);
     
     QObject::connect(tessMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
 		     [this, constantModeSubMenu, adaptativeModeSubMenu](int data) {
@@ -380,6 +437,7 @@ class TerrainScene : public Scene {
     ComboBoxOption * adaptativeTessMode = new ComboBoxOption("LOD method");
     adaptativeTessMode->addItem("Distance", AdaptativeMode::DISTANCE);
     adaptativeTessMode->addItem("Viewspace", AdaptativeMode::VIEWSPACE);
+    adaptativeTessMode->setCurrentIndex(_adaptativeTessellationMode);
     QObject::connect(adaptativeTessMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
 		     [this](int data) {
 		       _adaptativeTessellationMode = (AdaptativeMode)data;
@@ -489,13 +547,16 @@ class TerrainScene : public Scene {
   float _diffuseCoef = 0.8f;
   float _specularCoef = 0.1f;
   float _shininessCoef = 2.f;
+
+  float _distFog = 1400.f;
+  Vector3f _fogColor = Vector3f(0.5,0.5,0.5);
   
-  TexturingMode _texMode = TexturingMode::CONST_COLOR;
+  TexturingMode _texMode = TexturingMode::TEXTURE;
   DrawMode _drawMode = DrawMode::FILL;
   CameraMode _cameraMode = CameraMode::FREE_FLY;
-  TessellationMethod _tessellationMethod = TessellationMethod::NO_TESSELLATION;
-  TessellationMode _tessellationMode = TessellationMode::CONSTANT;
-  AdaptativeMode _adaptativeTessellationMode = AdaptativeMode::DISTANCE;
+  TessellationMethod _tessellationMethod = TessellationMethod::HARDWARE;
+  TessellationMode _tessellationMode = TessellationMode::ADAPTATIVE_FROM_POV;
+  AdaptativeMode _adaptativeTessellationMode = AdaptativeMode::VIEWSPACE;
 
   float _defaultCamSpeed;
   bool _needShaderReloading;
