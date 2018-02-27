@@ -21,7 +21,7 @@ class TerrainScene : public Scene {
   enum AdaptativeMode {DISTANCE = 1, VIEWSPACE = 2};
   
   void initialize() override {
-    _terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
+    //_terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
     _terrain.setTexture(QImage("../data/textures/sol.jpg"));
 
     loadShaders();
