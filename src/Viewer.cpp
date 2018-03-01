@@ -5,6 +5,7 @@
 #include "TerrainScene.h"
 #include "TessTestScene.h"
 #include "TessTerrainScene.h"
+#include "TestInstanciationScene.h"
 
 Viewer::Viewer(QMainWindow *parent)
   : QOpenGLWidget(parent), _frameNumber(0), _fpsSum(0), _dt(0), _mainWindow(parent)
@@ -25,7 +26,8 @@ Viewer::Viewer(QMainWindow *parent)
   _scene = std::make_shared<TerrainScene>();
   //_scene = std::make_shared<TessTerrainScene>();
   //_scene = std::make_shared<TessTestScene>();
-
+  //_scene = std::make_shared<TestInstanciationScene>();
+  
   // If a dock is related to the current scene, create it
   QDockWidget *dock = _scene->getDock();
   if (dock) {
