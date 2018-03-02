@@ -114,12 +114,12 @@ void main(void) {
       out_color = vec4(fs_in.texcoord.x, 0., fs_in.texcoord.y, 1.);
       break;
     case TEXTURING_MODE_TESSLEVEL:
-      out_color = colormap(fs_in.tessLevel / 64.);
+      //out_color = colormap(fs_in.tessLevel / 64.);
       break;
     }
   }
 }
-
+/*
 vec4 colormap(float x) {
     if (x < 0.0) {
         return vec4(0.0, 0.0, 0.0, 0.0);
@@ -512,3 +512,4 @@ vec4 colormap(float x) {
                + vec4( 9.7629999999999995e-01,  9.8309999999999997e-01,  5.3800000000000001e-02, 1.0);
     }
 }
+*/

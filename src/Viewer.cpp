@@ -6,6 +6,7 @@
 #include "TessTestScene.h"
 #include "TessTerrainScene.h"
 #include "TestInstanciationScene.h"
+#include "PatchTessTestScene.h"
 
 Viewer::Viewer(QMainWindow *parent)
   : QOpenGLWidget(parent), _frameNumber(0), _fpsSum(0), _dt(0), _mainWindow(parent)
@@ -24,6 +25,7 @@ Viewer::Viewer(QMainWindow *parent)
 
   // Create Scene
   _scene = std::make_shared<TerrainScene>();
+  //_scene = std::make_shared<PatchTessTestScene>();
   //_scene = std::make_shared<TessTerrainScene>();
   //_scene = std::make_shared<TessTestScene>();
   //_scene = std::make_shared<TestInstanciationScene>();

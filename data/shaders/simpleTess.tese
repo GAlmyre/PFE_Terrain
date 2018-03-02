@@ -1,6 +1,6 @@
 #version 400 core
 
-layout (triangles, equal_spacing, cw) in;
+layout (triangles, fractional_odd_spacing, cw) in;
 
 in VertexData {
     vec2 texcoord;
