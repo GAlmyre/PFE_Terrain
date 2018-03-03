@@ -15,7 +15,7 @@ Terrain::Terrain()
 void Terrain::setHeightMap(const QImage& heightMap)
 {
   _heightMap = new QOpenGLTexture(heightMap.mirrored());
-  _heightMap->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
+  _heightMap->setMinificationFilter(QOpenGLTexture::Linear);
   _heightMap->setMagnificationFilter(QOpenGLTexture::Linear);
   updateBaseMesh();
 }
