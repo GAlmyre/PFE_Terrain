@@ -14,9 +14,12 @@ Terrain::Terrain()
 
 void Terrain::setHeightMap(const QImage& heightMap)
 {
-  _heightMap = new QOpenGLTexture(heightMap.mirrored());
+  _heightMap = new QOpenGLTexture(heightMap.mirrored(), QOpenGLTexture::DontGenerateMipMaps);
   _heightMap->setMinificationFilter(QOpenGLTexture::Linear);
   _heightMap->setMagnificationFilter(QOpenGLTexture::Linear);
+  _texture->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::ClampToEdge);
+  _texture->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::ClampToEdge);
+
   updateBaseMesh();
 }
 
@@ -25,6 +28,8 @@ void Terrain::setTexture(const QImage& texture)
   _texture = new QOpenGLTexture(texture.mirrored());
   _texture->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
   _texture->setMagnificationFilter(QOpenGLTexture::Linear);
+  _texture->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::ClampToEdge);
+  _texture->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::ClampToEdge);
 }
 
 Eigen::Vector2f Terrain::getSize() {
