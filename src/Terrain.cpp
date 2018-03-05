@@ -147,8 +147,6 @@ void Terrain::updateBaseMesh()
     _rows = 10;
     _cols = 10;
   }
-  _bBox.extend(Vector3f(0.f, 0.f, 0.f));
-  _bBox.extend(Vector3f(_width, 200.f, _height));
 }
 
 void Terrain::createGrid(float width, float height, unsigned int nbRows, unsigned int nbColumns, bool quads)
@@ -267,8 +265,8 @@ const QImage &Terrain::heightmap() {
 
 bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float heightScale, float &tHit) {
   Vector3f invDir = dir.cwiseInverse();
-  const Vector3f &min = _bBox.min();
-  const Vector3f &max = _bBox.max();
+  const Vector3f min(0.f, 0.f, 0.f);
+  const Vector3f max(_width, heightScale, _height);
 
   /* First, we find the intersection between the ray and the terrain bounding box */
   float tmin, tmax, tymin, tymax, tzmin, tzmax;
@@ -321,11 +319,17 @@ bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float heightS
   /* We found an intersection with the AABB, let's find the intersection with the terrain by ray marching */
   float factor = heightScale / 255.f;
   float deltat = 0.01f;
+
+  // If we intersect at the begin of the BBox, we are under the terrain, don't consider it as an intersection
+  Vector3f p = orig + dir * tmin;
+  if (p.y() < qRed(_heightMapImage.pixel((int) p.x(), (int) _height - 1 -  p.z())) * factor)
+    return false;
+
   for (float t = tmin + deltat; t <= tmax; t += deltat) {
     Vector3f p = orig + dir * t;
-    float h = qRed(_heightMapImage.pixel((int) p.x(), (int) p.z())) * factor;
+    float h = qRed(_heightMapImage.pixel((int) p.x(), (int) _height - 1 -  p.z())) * factor;
     if (p.y() < h) {
-      tHit = t - deltat;
+      tHit = t - 0.5 * deltat;
       return true;
     }
   }

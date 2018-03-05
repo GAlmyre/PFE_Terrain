@@ -187,14 +187,12 @@ class TerrainScene : public Scene {
 
     _testSphere.display(*_fillPrg);
 
-    if (showCastLine) {
+    if (intersectionFound) {
       _f->glUniformMatrix4fv(_fillPrg->uniformLocation("model"), 1, GL_FALSE, Eigen::Affine3f::Identity().data());
       Line::draw(_f, _fillPrg, lineOrig, lineInterPoint); // Rayon
-      if (intersectionFound) {
-        _fillPrg->setUniformValue(_fillPrg->uniformLocation("color"), QVector4D(1,0.5,0.1,1));
-        Point::draw(_f, _fillPrg, lineInterPoint);
-      }
 
+      _fillPrg->setUniformValue(_fillPrg->uniformLocation("color"), QVector4D(1,0.5,0.1,1));
+      Point::draw(_f, _fillPrg, lineInterPoint);
     }
   }
 
@@ -584,7 +582,6 @@ class TerrainScene : public Scene {
         QPoint pos = e->pos();
         Eigen::Vector2i mousePos(pos.x(), pos.y());
         _camera->screenPosToRay(mousePos, lineOrig, lineDir);
-        showCastLine = true;
 
         float t = 0;
         if (_terrain.intersect(lineOrig, lineDir, _heightScale, t)) {
@@ -594,6 +591,7 @@ class TerrainScene : public Scene {
         } else {
           std::cout << "Not intersected" << std::endl;
           lineInterPoint = lineOrig + lineDir * _terrain.getSize().x();
+          intersectionFound = false;
         }
 
       } else {
@@ -701,7 +699,6 @@ private:
   float _defaultCamSpeed;
   bool _needShaderReloading;
 
-  bool showCastLine = false;
   bool intersectionFound = false;
   Eigen::Vector3f lineOrig;
   Eigen::Vector3f lineDir;
