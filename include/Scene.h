@@ -10,27 +10,32 @@
 
 class Scene {
 public:
-  Scene () : _f(nullptr), _camera(nullptr), _dock(nullptr) {}
+  Scene () : _f(nullptr),  _dock(nullptr) {}
   virtual ~Scene() { if (_dock) delete _dock; }
 
   void setFuncs(GLFuncs *funcs) { _f = funcs; }
-  void setCamera(FreeFlyCamera *camera) { _camera = camera; }
   QDockWidget *getDock() { _dock = createDock(); return _dock; };
 
   virtual void initialize() = 0;
   virtual void render() = 0;
   virtual void update(float dt) = 0;
   virtual void resize(int width, int height) {
-    _camera->setViewport(width, height);
     _f->glViewport( 0, 0, (GLint)width, (GLint)height );
   }
   virtual void clean() = 0;
 
   virtual QDockWidget *createDock() { return nullptr; };
   virtual void connectToMainWindow(const MainWindow&) { };
+
+  virtual void mouseMoveEvent(QMouseEvent *e) {};
+  virtual void wheelEvent(QWheelEvent *e) {};
+  virtual void mousePressEvent(QMouseEvent *e) {};
+  virtual void mouseReleaseEvent(QMouseEvent *e) {};
+  virtual void keyPressEvent(QKeyEvent *e) {};
+  virtual void keyReleaseEvent(QKeyEvent *e) {};
+  virtual void focusOutEvent(QFocusEvent *event) {};
 protected:
   GLFuncs *_f;
-  FreeFlyCamera *_camera;
 private:
   QDockWidget *_dock;
 };

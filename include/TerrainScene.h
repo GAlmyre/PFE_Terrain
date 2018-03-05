@@ -4,6 +4,7 @@
 #include "Scene.h"
 #include "Terrain.h"
 #include "DirectionalLight.h"
+#include "Sphere.h"
 
 #include "VariableOption.h"
 #include "ComboBoxOption.h"
@@ -29,10 +30,15 @@ class TerrainScene : public Scene {
     _needShaderReloading = false;
 
     _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
+    _camera = std::make_shared<FreeFlyCamera>();
     _camera->setPosition(Eigen::Vector3f(10, 100, 10));
     _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
     _camera->setViewport(600, 400);
     _camera->setSpeed(_defaultCamSpeed);
+
+    _testSphere.generate(1.);
+    _testSphere.init(_f);
+    _testSphere._transformation = Translation3f(200.f, 100.f, 200.f);
 
     _f->glEnable(GL_DEPTH_TEST);
     _f->glClearColor(0.2, 0.2, 0.2, 1.0);
@@ -46,6 +52,8 @@ class TerrainScene : public Scene {
       delete _simplePrg;
     if(_simpleTessPrg)
       delete _simpleTessPrg;
+    if(_fillPrg)
+      delete _fillPrg;
     //shader init
     _simplePrg = new QOpenGLShaderProgram();
     _simplePrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
@@ -58,6 +66,10 @@ class TerrainScene : public Scene {
     _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/simpleTess.tesc");
     _simpleTessPrg->addShaderFromSourceFile(QOpenGLShader::TessellationEvaluation, "../data/shaders/simpleTess.tese");
     _simpleTessPrg->link();
+
+    _fillPrg = new QOpenGLShaderProgram();
+    _fillPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/fill.vert");
+    _fillPrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/fill.frag");
   }
 
   void render() override {
@@ -163,6 +175,25 @@ class TerrainScene : public Scene {
       _simpleTessPrg->release();
     }
     else{
+
+    }
+
+    _fillPrg->bind();
+
+    _fillPrg->setUniformValue(_fillPrg->uniformLocation("color"), QVector4D(1,1,1,1));
+    _f->glUniformMatrix4fv(_fillPrg->uniformLocation("model"), 1, GL_FALSE, _testSphere._transformation.data());
+    _f->glUniformMatrix4fv(_fillPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
+    _f->glUniformMatrix4fv(_fillPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+
+    _testSphere.display(*_fillPrg);
+
+    if (showCastLine) {
+      _f->glUniformMatrix4fv(_fillPrg->uniformLocation("model"), 1, GL_FALSE, Eigen::Affine3f::Identity().data());
+      Line::draw(_f, _fillPrg, lineOrig, lineInterPoint); // Rayon
+      if (intersectionFound) {
+        _fillPrg->setUniformValue(_fillPrg->uniformLocation("color"), QVector4D(1,0.5,0.1,1));
+        Point::draw(_f, _fillPrg, lineInterPoint);
+      }
 
     }
   }
@@ -522,7 +553,7 @@ class TerrainScene : public Scene {
   virtual void connectToMainWindow(const MainWindow& mw){
     QObject::connect(&mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedHeightMap),
 		     [this](const QImage& im) {
-		       this->_terrain.setHeightMap(im);
+		       _terrain.setHeightMap(im);
            _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
            _camera->setSpeed(_defaultCamSpeed);
 		     });
@@ -533,11 +564,120 @@ class TerrainScene : public Scene {
 		     });
   }
 
- private:
-  QOpenGLShaderProgram * _simplePrg;
-  QOpenGLShaderProgram * _simpleTessPrg;
+  virtual void resize(int width, int height) {
+    _camera->setViewport(width, height);
+    _f->glViewport( 0, 0, (GLint)width, (GLint)height );
+  }
+
+  virtual void mouseMoveEvent(QMouseEvent *e) {
+    if (e->buttons() == Qt::LeftButton)
+      _camera->processMouseMove(e->x(), e->y());
+  }
+
+  virtual void wheelEvent(QWheelEvent *e) {
+  }
+
+  virtual void mousePressEvent(QMouseEvent *e) {
+    if (e->button() == Qt::LeftButton) {
+      if (e->modifiers() & Qt::ControlModifier) {
+        // Throw a ray
+        QPoint pos = e->pos();
+        Eigen::Vector2i mousePos(pos.x(), pos.y());
+        _camera->screenPosToRay(mousePos, lineOrig, lineDir);
+        showCastLine = true;
+
+        float t = 0;
+        if (_terrain.intersect(lineOrig, lineDir, _heightScale, t)) {
+          std::cout << "intersected : " << t << std::endl;
+          lineInterPoint = lineOrig + lineDir * t;
+          intersectionFound = true;
+        } else {
+          std::cout << "Not intersected" << std::endl;
+          lineInterPoint = lineOrig + lineDir * _terrain.getSize().x();
+        }
+
+      } else {
+        _camera->processMousePress(e->x(), e->y());
+      }
+    }
+  }
+
+  virtual void mouseReleaseEvent(QMouseEvent *e) {
+    if (e->button() == Qt::LeftButton)
+      _camera->processMouseRelease();
+  }
+
+  virtual void keyPressEvent(QKeyEvent *e) {
+    switch (e->key())
+    {
+      case Qt::Key_Up:
+      case Qt::Key_Z:
+        _camera->processKeyPress(FreeFlyCamera::KEY_FORWARD);
+        break;
+      case Qt::Key_Down:
+      case Qt::Key_S:
+        _camera->processKeyPress(FreeFlyCamera::KEY_BACKWARD);
+        break;
+      case Qt::Key_Right:
+      case Qt::Key_D:
+        _camera->processKeyPress(FreeFlyCamera::KEY_RIGHT);
+        break;
+      case Qt::Key_Left:
+      case Qt::Key_Q:
+        _camera->processKeyPress(FreeFlyCamera::KEY_LEFT);
+        break;
+      case Qt::Key_E:
+        _camera->processKeyPress(FreeFlyCamera::KEY_UP);
+        break;
+      case Qt::Key_F:
+        _camera->processKeyPress(FreeFlyCamera::KEY_DOWN);
+        break;
+      default:break;
+    }
+  }
+
+  virtual void keyReleaseEvent(QKeyEvent *e) {
+    switch (e->key())
+    {
+      case Qt::Key_Up:
+      case Qt::Key_Z:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_FORWARD);
+        break;
+      case Qt::Key_Down:
+      case Qt::Key_S:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_BACKWARD);
+        break;
+      case Qt::Key_Right:
+      case Qt::Key_D:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_RIGHT);
+        break;
+      case Qt::Key_Left:
+      case Qt::Key_Q:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_LEFT);
+        break;
+      case Qt::Key_E:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_UP);
+        break;
+      case Qt::Key_F:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_DOWN);
+        break;
+      default:break;
+    }
+  }
+
+  virtual void focusOutEvent(QFocusEvent *event) {
+    _camera->stopMovement();
+  }
+
+private:
+  QOpenGLShaderProgram *_simplePrg;
+  QOpenGLShaderProgram *_simpleTessPrg;
+  QOpenGLShaderProgram *_fillPrg;
   Terrain _terrain;
   DirectionalLight _light;
+  Sphere _testSphere;
+
+  std::shared_ptr<FreeFlyCamera> _camera;
 
   float _constantInnerTessellationLevel = 1.f;
   float _constantOuterTessellationLevel = 1.f;
@@ -560,6 +700,12 @@ class TerrainScene : public Scene {
 
   float _defaultCamSpeed;
   bool _needShaderReloading;
+
+  bool showCastLine = false;
+  bool intersectionFound = false;
+  Eigen::Vector3f lineOrig;
+  Eigen::Vector3f lineDir;
+  Eigen::Vector3f lineInterPoint;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H

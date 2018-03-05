@@ -9,7 +9,7 @@ using namespace Eigen;
 
 FreeFlyCamera::FreeFlyCamera()
   : m_position(Vector3f::Zero()), m_direction(Vector3f::UnitZ()), m_yaw(0), m_pitch(0), m_width(800), m_height(600)
-  , m_fovy(M_PI / 3.f), m_near(0.1), m_far(50000), m_mouseOffset(Vector2f(0.f, 0.f))
+  , m_fovy(M_PI / 3.f), m_near(0.1), m_far(50000), m_mouseOffset(Vector2f(0.f, 0.f)), m_rotating(false)
 {
   m_viewMatrix.setIdentity();
   setDirection(m_direction);
@@ -37,6 +37,7 @@ FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vecto
   m_fovy = M_PI / 3.f;
   m_near = 0.1;
   m_far = 50000.f;
+  m_rotating = false;
 
   updateProjectionMatrix();
   initOffsetBuffer();
@@ -117,6 +118,18 @@ const Eigen::Affine3f &FreeFlyCamera::viewMatrix() const {
 
 const Eigen::Matrix4f &FreeFlyCamera::projectionMatrix() const {
   return m_ProjectionMatrix;
+}
+
+void FreeFlyCamera::screenPosToRay(const Eigen::Vector2i &p, Eigen::Vector3f &orig, Eigen::Vector3f &dir) const {
+  orig = m_position;
+  Vector3f localDir = Vector3f( ((2.0 * p[0] / m_width) - 1.0) * tan(m_fovy/2.0) * m_width / m_height,
+                                ((2.0 * (m_height - p[1]) / m_height) - 1.0) * tan(m_fovy/2.0),
+                                -1.0 );
+
+  Vector3f right = m_direction.cross(m_worldUp).normalized();
+  Vector3f up = right.cross(m_direction).normalized();
+
+  dir = (localDir.x() * right + localDir.y() * up + localDir.z() * m_direction).normalized();
 }
 
 float FreeFlyCamera::speed() const {
@@ -230,16 +243,20 @@ void FreeFlyCamera::processKeyRelease(Key key)
 
 void FreeFlyCamera::processMousePress(int mouseX, int mouseY)
 {
+  m_rotating = true;
   m_mouseLastPos.x() = mouseX;
   m_mouseLastPos.y() = -mouseY;
 }
 
 void FreeFlyCamera::processMouseRelease()
 {
+  m_rotating = false;
 }
 
 void FreeFlyCamera::processMouseMove(int mouseX, int mouseY)
 {
+  if (!m_rotating) return;
+
   Vector2f mousePos(mouseX, - mouseY);
   m_mouseOffset += mousePos - m_mouseLastPos;
   m_mouseLastPos = mousePos;
@@ -258,6 +275,7 @@ void FreeFlyCamera::processMouseScroll(float yoffset) {
 
 void FreeFlyCamera::stopMovement() {
   resetKeyStates();
+  m_rotating = false;
 }
 
 void FreeFlyCamera::setMouseOffsetBufferSize(size_t size) {

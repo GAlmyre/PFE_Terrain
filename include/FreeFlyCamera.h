@@ -35,6 +35,9 @@ public:
   // Returns the projection matrix
   const Eigen::Matrix4f &projectionMatrix() const;
 
+  // Throw a ray through screen
+  void screenPosToRay(const Eigen::Vector2i &p, Eigen::Vector3f &orig, Eigen::Vector3f &dir) const;
+
   float speed() const;
   Eigen::Vector2f viewport() const;
 
@@ -88,6 +91,7 @@ private:
   float m_speed = 0.01;
   float m_sensitivity = 0.0005;
   std::map<Key, bool> m_keyStates;
+  bool m_rotating;
 
   // Mouse Offsets
   int m_bufferSize = 5;

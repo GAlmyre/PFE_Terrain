@@ -17,6 +17,7 @@ class TestInstanciationScene : public Scene {
 
     _needShaderReloading = false;
 
+    _camera = std::make_shared<FreeFlyCamera>();
     _camera->setPosition(Eigen::Vector3f(0, 1, 1));
     _camera->setDirection(-Eigen::Vector3f(0,1,1));
     _camera->setViewport(600, 400);
@@ -264,10 +265,97 @@ class TestInstanciationScene : public Scene {
     
   }
 
+  virtual void resize(int width, int height) {
+    _camera->setViewport(width, height);
+    _f->glViewport( 0, 0, (GLint)width, (GLint)height );
+  }
+
+  virtual void mouseMoveEvent(QMouseEvent *e) {
+    if (e->buttons() == Qt::LeftButton)
+      _camera->processMouseMove(e->x(), e->y());
+  }
+
+  virtual void wheelEvent(QWheelEvent *e) {
+  }
+
+  virtual void mousePressEvent(QMouseEvent *e) {
+    if (e->button() == Qt::LeftButton)
+      _camera->processMousePress(e->x(), e->y());
+  }
+
+  virtual void mouseReleaseEvent(QMouseEvent *e) {
+    if (e->button() == Qt::LeftButton)
+      _camera->processMouseRelease();
+  }
+
+  virtual void keyPressEvent(QKeyEvent *e) {
+    switch (e->key())
+    {
+      case Qt::Key_Up:
+      case Qt::Key_Z:
+        _camera->processKeyPress(FreeFlyCamera::KEY_FORWARD);
+        break;
+      case Qt::Key_Down:
+      case Qt::Key_S:
+        _camera->processKeyPress(FreeFlyCamera::KEY_BACKWARD);
+        break;
+      case Qt::Key_Right:
+      case Qt::Key_D:
+        _camera->processKeyPress(FreeFlyCamera::KEY_RIGHT);
+        break;
+      case Qt::Key_Left:
+      case Qt::Key_Q:
+        _camera->processKeyPress(FreeFlyCamera::KEY_LEFT);
+        break;
+      case Qt::Key_E:
+        _camera->processKeyPress(FreeFlyCamera::KEY_UP);
+        break;
+      case Qt::Key_F:
+        _camera->processKeyPress(FreeFlyCamera::KEY_DOWN);
+        break;
+      default:break;
+    }
+  }
+
+  virtual void keyReleaseEvent(QKeyEvent *e) {
+    switch (e->key())
+    {
+      case Qt::Key_Up:
+      case Qt::Key_Z:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_FORWARD);
+        break;
+      case Qt::Key_Down:
+      case Qt::Key_S:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_BACKWARD);
+        break;
+      case Qt::Key_Right:
+      case Qt::Key_D:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_RIGHT);
+        break;
+      case Qt::Key_Left:
+      case Qt::Key_Q:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_LEFT);
+        break;
+      case Qt::Key_E:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_UP);
+        break;
+      case Qt::Key_F:
+        _camera->processKeyRelease(FreeFlyCamera::KEY_DOWN);
+        break;
+      default:break;
+    }
+  }
+
+  virtual void focusOutEvent(QFocusEvent *event) {
+    _camera->stopMovement();
+  }
+
  private:
   unsigned int _nbInstances;
   
   QOpenGLShaderProgram * _simpleInstanciationPrg;
+
+  std::shared_ptr<FreeFlyCamera> _camera;
 
   std::vector<Vector3f> _vertices;
   std::vector<unsigned int> _indices;

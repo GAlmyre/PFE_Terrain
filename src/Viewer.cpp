@@ -25,10 +25,10 @@ Viewer::Viewer(QMainWindow *parent)
 
   // Create Scene
   _scene = std::make_shared<TerrainScene>();
-  //_scene = std::make_shared<PatchTessTestScene>();
-  //_scene = std::make_shared<TessTerrainScene>();
-  //_scene = std::make_shared<TessTestScene>();
-  //_scene = std::make_shared<TestInstanciationScene>();
+//  _scene = std::make_shared<PatchTessTestScene>();
+//  _scene = std::make_shared<TessTerrainScene>();
+//  _scene = std::make_shared<TessTestScene>();
+//  _scene = std::make_shared<TestInstanciationScene>();
   
   // If a dock is related to the current scene, create it
   QDockWidget *dock = _scene->getDock();
@@ -78,7 +78,6 @@ void Viewer::initializeGL() {
 
   // Initialize scene
   _scene->setFuncs(_funcs);
-  _scene->setCamera(&_camera);
   _scene->initialize();
 }
 
@@ -109,25 +108,23 @@ void Viewer::updateScene() {
 
 void Viewer::mousePressEvent(QMouseEvent *e){
   setFocus();
-  if (e->button() == Qt::LeftButton)
-    _camera.processMousePress(e->x(), e->y());
+  _scene->mousePressEvent(e);
 }
 
 void Viewer::mouseReleaseEvent(QMouseEvent *e){
-  if (e->button() == Qt::LeftButton)
-    _camera.processMouseRelease();
+  _scene->mouseReleaseEvent(e);
 }
 
 void Viewer::mouseMoveEvent(QMouseEvent *e){
-  if (e->buttons() == Qt::LeftButton)
-    _camera.processMouseMove(e->x(), e->y());
+  _scene->mouseMoveEvent(e);
 }
 
 void Viewer::wheelEvent(QWheelEvent *e){
-
+  _scene->wheelEvent(e);
 }
 
 void Viewer::keyPressEvent(QKeyEvent *e) {
+  _scene->keyPressEvent(e);
   switch (e->key())
   {
     case Qt::Key_Escape:
@@ -149,68 +146,18 @@ void Viewer::keyPressEvent(QKeyEvent *e) {
 //      }
       break;
       //Movement
-    case Qt::Key_Up:
-    case Qt::Key_Z:
-      _camera.processKeyPress(FreeFlyCamera::KEY_FORWARD);
-      break;
-    case Qt::Key_Down:
-    case Qt::Key_S:
-      _camera.processKeyPress(FreeFlyCamera::KEY_BACKWARD);
-      break;
-    case Qt::Key_Right:
-    case Qt::Key_D:
-      _camera.processKeyPress(FreeFlyCamera::KEY_RIGHT);
-      break;
-    case Qt::Key_Left:
-    case Qt::Key_Q:
-      _camera.processKeyPress(FreeFlyCamera::KEY_LEFT);
-      break;
-    case Qt::Key_E:
-      _camera.processKeyPress(FreeFlyCamera::KEY_UP);
-      break;
-    case Qt::Key_F:
-      _camera.processKeyPress(FreeFlyCamera::KEY_DOWN);
-      break;
     default:
       QOpenGLWidget::keyPressEvent(e);
   }
 }
 
 void Viewer::keyReleaseEvent(QKeyEvent *e) {
-  switch (e->key())
-  {
-    case Qt::Key_Up:
-    case Qt::Key_Z:
-      _camera.processKeyRelease(FreeFlyCamera::KEY_FORWARD);
-      break;
-    case Qt::Key_Down:
-    case Qt::Key_S:
-      _camera.processKeyRelease(FreeFlyCamera::KEY_BACKWARD);
-      break;
-    case Qt::Key_Right:
-    case Qt::Key_D:
-      _camera.processKeyRelease(FreeFlyCamera::KEY_RIGHT);
-      break;
-    case Qt::Key_Left:
-    case Qt::Key_Q:
-      _camera.processKeyRelease(FreeFlyCamera::KEY_LEFT);
-      break;
-    case Qt::Key_E:
-      _camera.processKeyRelease(FreeFlyCamera::KEY_UP);
-      break;
-    case Qt::Key_F:
-      _camera.processKeyRelease(FreeFlyCamera::KEY_DOWN);
-      break;
-      //case Qt::Key_F11:
-      //	isFullScreen() ? showNormal() : showFullScreen();
-      //	break;
-    default:
-      QOpenGLWidget::keyReleaseEvent(e);
-  }
+  _scene->keyReleaseEvent(e);
+  QOpenGLWidget::keyReleaseEvent(e);
 }
 
 void Viewer::focusOutEvent(QFocusEvent * event) {
-  _camera.stopMovement();
+  _scene->focusOutEvent(event);
 }
 
 void Viewer::messageLogged(const QOpenGLDebugMessage &msg) {
