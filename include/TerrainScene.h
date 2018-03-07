@@ -20,7 +20,7 @@ class TerrainScene : public Scene {
   enum TessellationMethod {NO_TESSELLATION, HARDWARE, INSTANCIATION};
   enum TessellationMode {CONSTANT = 0, ADAPTATIVE_FROM_POV, ADAPTATIVE_FROM_FIXED_POINT};
   enum AdaptativeMode {DISTANCE = 0, VIEWSPACE = 1};
-  
+
   void initialize() override {
     //_terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
     _terrain.setTexture(QImage("../data/textures/sol.jpg"));
@@ -79,11 +79,11 @@ class TerrainScene : public Scene {
     }
 
     _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    
+
     if(_tessellationMethod == TessellationMethod::NO_TESSELLATION)
     {
       _simplePrg->bind();
-      
+
       _f->glUniform1f(_simplePrg->uniformLocation("heightScale"), _heightScale);
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
@@ -92,14 +92,14 @@ class TerrainScene : public Scene {
       _simplePrg->setUniformValue(_simplePrg->uniformLocation("Ks"), _specularCoef);
       _simplePrg->setUniformValue(_simplePrg->uniformLocation("shininess"), _shininessCoef);
       _simplePrg->setUniformValue(_simplePrg->uniformLocation("distanceFog"), _distFog);
-      _f->glUniform3fv(_simplePrg->uniformLocation("fogColor"), 1, _fogColor.data()); 
+      _f->glUniform3fv(_simplePrg->uniformLocation("fogColor"), 1, _fogColor.data());
       Vector3f lightDir = _light.getDirection();
       Vector3f lightColor = _light.getColor();
 
       _f->glUniform3fv(_simplePrg->uniformLocation("lightDirection"), 1, lightDir.data());
       _f->glUniform3fv(_simplePrg->uniformLocation("lightColor"), 1, lightColor.data());
 
-      
+
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
         _f->glDepthFunc(GL_LESS);
         _simplePrg->setUniformValue(_simplePrg->uniformLocation("wireframe"), false);
@@ -134,9 +134,9 @@ class TerrainScene : public Scene {
 
       _f->glUniformMatrix4fv(_simpleTessPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
       _f->glUniformMatrix4fv(_simpleTessPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
-      
+
       _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
-      
+
       _f->glUniform1f(_simpleTessPrg->uniformLocation("TessLevelInner"), _constantInnerTessellationLevel);
       Vector3f outerLvl = Vector3f::Constant(_constantOuterTessellationLevel);
       _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
@@ -154,7 +154,7 @@ class TerrainScene : public Scene {
         /* TODO : Implement Placement of point on scene */
         _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
       }
-      
+
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
       _f->glDepthFunc(GL_LESS);
       _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("wireframe"), false);
@@ -163,7 +163,7 @@ class TerrainScene : public Scene {
       _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
       _terrain.drawHardwareTessellation(*_simpleTessPrg);
       }
-      
+
       if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
       _f->glDepthFunc(GL_LEQUAL);
       _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("wireframe"), true);
@@ -171,7 +171,7 @@ class TerrainScene : public Scene {
       _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       _terrain.drawHardwareTessellation(*_simpleTessPrg);
       }
-      
+
       _simpleTessPrg->release();
     }
     else{
@@ -267,13 +267,13 @@ class TerrainScene : public Scene {
 		       _light.setAltitude(val*M_PI/180.);
 		     });
 
-    lightingLayout->addWidget(lightAltitude); 
+    lightingLayout->addWidget(lightAltitude);
 
 
     //Light color selection button
     QHBoxLayout * lightColor = new QHBoxLayout;
     lightingLayout->addLayout(lightColor);
-    
+
     QLabel * lColorLabel = new QLabel("Light color :");
     lightColor->addWidget(lColorLabel);
 
@@ -313,7 +313,7 @@ class TerrainScene : public Scene {
 		     });
 
     lightingLayout->addWidget(ambientCoef);
-    
+
     //diffuse coef
     VariableOption * diffuseCoef = new VariableOption("Kd :", _diffuseCoef, 0, 1, 0.01);
     QObject::connect(diffuseCoef, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
@@ -331,7 +331,7 @@ class TerrainScene : public Scene {
 		     });
 
     lightingLayout->addWidget(specularCoef);
-    
+
     //shininess coef
     VariableOption * shininessCoef = new VariableOption("shininess :", _shininessCoef, 0, 100, 0.01);
     QObject::connect(shininessCoef, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
@@ -358,7 +358,7 @@ class TerrainScene : public Scene {
     //Light color selection button
     QHBoxLayout * fogColor = new QHBoxLayout;
     lightingLayout->addLayout(fogColor);
-    
+
     QLabel * fogColorLabel = new QLabel("Fog color :");
     fogColor->addWidget(fogColorLabel);
 
@@ -380,7 +380,7 @@ class TerrainScene : public Scene {
 		       }
 		     });
 
-    
+
     return lightingGroupBox;
   }
 
@@ -399,7 +399,7 @@ class TerrainScene : public Scene {
 		     [this](int data) {
 		       _tessellationMethod = (TessellationMethod)data;
 		     });
-    
+
     tessellationLayout->addWidget(tessMethod);
 
     //Separator
@@ -418,7 +418,7 @@ class TerrainScene : public Scene {
     constantModeSubMenu->setVisible((_tessellationMode == TessellationMode::CONSTANT)? true : false);
     QFrame * adaptativeModeSubMenu = new QFrame();
     adaptativeModeSubMenu->setVisible((_tessellationMode == TessellationMode::CONSTANT)? false : true);
-    
+
     QObject::connect(tessMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
 		     [this, constantModeSubMenu, adaptativeModeSubMenu](int data) {
 		       _tessellationMode = (TessellationMode)data;
@@ -434,14 +434,14 @@ class TerrainScene : public Scene {
 			 break;
 		       }
 		     });
-    
+
     tessellationLayout->addWidget(tessMode);
     tessellationLayout->addWidget(constantModeSubMenu);
     tessellationLayout->addWidget(adaptativeModeSubMenu);
 
-    
 
-    
+
+
     QVBoxLayout * constantModeLayout = new QVBoxLayout;
     constantModeLayout->setContentsMargins(0,0,0,0);
     constantModeSubMenu->setLayout(constantModeLayout);
@@ -479,7 +479,7 @@ class TerrainScene : public Scene {
 		     });
     adaptativeModeLayout->addWidget(adaptativeTessMode);
     adaptativeModeLayout->addWidget(adaptativeFactor);
-    
+
     //Separator
     QFrame* line2 = new QFrame();
     line2->setFrameShape(QFrame::HLine);
@@ -506,7 +506,7 @@ class TerrainScene : public Scene {
 		     [this](int data) {
 		       _cameraMode = (CameraMode)data;
 		     });
-    
+
     cameraLayout->addWidget(cameraMode);
 
     VariableOption * cameraSpeed = new VariableOption("Camera speed : ", 15, 1, 30, 1);
@@ -518,7 +518,7 @@ class TerrainScene : public Scene {
 
     return cameraGroupBox;
   }
-  
+
   virtual QDockWidget *createDock() {
     QDockWidget *dock = new QDockWidget("Options");
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -536,7 +536,7 @@ class TerrainScene : public Scene {
 		     [this](){
 		       _needShaderReloading = true;
 		     });
-    
+
     VLayout->setAlignment(Qt::AlignTop);
     VLayout->addWidget(createDisplayGroupBox());
     VLayout->addWidget(createCameraGroupBox());
@@ -547,7 +547,7 @@ class TerrainScene : public Scene {
     dock->setWidget(scrollArea);
     return dock;
   }
-    
+
   virtual void connectToMainWindow(const MainWindow& mw){
     QObject::connect(&mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedHeightMap),
 		     [this](const QImage& im) {
@@ -679,7 +679,7 @@ private:
 
   float _constantInnerTessellationLevel = 1.f;
   float _constantOuterTessellationLevel = 1.f;
-  float _adaptativeFactor = 1.f;					    
+  float _adaptativeFactor = 1.f;
   float _heightScale = 50.f;
   float _ambientCoef = 0.4f;
   float _diffuseCoef = 0.8f;
@@ -687,8 +687,8 @@ private:
   float _shininessCoef = 2.f;
 
   float _distFog = 1400.f;
-  Vector3f _fogColor = Vector3f(0.5,0.5,0.5);
-  
+  Vector3f _fogColor = Vector3f(0.3058823529411765,0.3058823529411765,0.3058823529411765);
+
   TexturingMode _texMode = TexturingMode::TEXTURE;
   DrawMode _drawMode = DrawMode::FILL;
   CameraMode _cameraMode = CameraMode::FREE_FLY;

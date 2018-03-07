@@ -43,7 +43,8 @@ vec4 colormap(float x);
 
 vec3 normalFromTexcoords(vec2 uv, float elevation){
   vec2 normals = texture(heightmap, uv).yz;
-  normals = normals*2. - 1.;
+  normals = normals - 0.5;
+  normals *= 8;
   vec3 u = normalize(vec3(1., elevation*normals.x, 0.));
   vec3 v = normalize(vec3(0., elevation*normals.y, 1.));
   return normalize(cross(v, u));

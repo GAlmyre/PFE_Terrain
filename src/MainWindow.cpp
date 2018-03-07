@@ -125,7 +125,14 @@ void MainWindow::loadHeightMap() {
 //  l[1].print();
 
   /* If image is 16-bits we add 2^16/2, if 8 bits we add 2^8/2 */
-  if (l.max() > 255.f) {
+  std::cout << "image max : " << image.max() << std::endl;
+  std::cout << "l min max : " << l[0].min()
+                              << " " << l[0].max()
+                              << " " << l[1].min()
+                              << " " << l[1].max()<< std::endl;
+  l[0] /= 8;
+  l[1] /= 8;
+  if (image.max() > 255.f) {
     l[0] += 32768;
     l[1] += 32768;
   } else {
@@ -133,13 +140,18 @@ void MainWindow::loadHeightMap() {
     l[1] += 128;
   }
 
+  std::cout << "l min max : " << l[0].min()
+                              << " " << l[0].max()
+                              << " " << l[1].min()
+                              << " " << l[1].max()<< std::endl;
+
   image.append(l[0], 'c');
   image.append(l[1], 'c');
-  
+
   image.save_png("../data/heightmaps/tmp.png");
   QImage heightmap("../data/heightmaps/tmp.png");
   std::cout << "opened heightmap \"" << fileInfo.fileName().toStdString() << "\"\n";
-  
+
   emit loadedHeightMap(heightmap);
 }
 

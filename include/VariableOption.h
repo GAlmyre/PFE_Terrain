@@ -54,7 +54,7 @@ class VariableOption : public QWidget {
    
     void spinBoxValueChanged(double val) {
       _slider->blockSignals(true);
-      _slider->setValue(_min+(val/_step));
+      _slider->setValue((val-_min)/_step);
       _slider->blockSignals(false);
       emit valueChanged(val);
     }

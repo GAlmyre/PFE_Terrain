@@ -24,14 +24,89 @@ class PatchTessTestScene : public Scene {
     _camera->setPosition(Eigen::Vector3f(1.5, 1.5, 1.5));
     _camera->setDirection(-Eigen::Vector3f(1,1,1));
     _camera->setViewport(600, 400);
-    
+
     _f->glEnable(GL_DEPTH_TEST);
     _f->glClearColor(0.2, 0.2, 0.2, 1.0);
     _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    
+
     generateTessellatedPatches();
 
+    _f->glGenBuffers(1, &_vertexPositionSSBO);
+    _f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _vertexPositionSSBO);
+    _f->glBufferData(GL_SHADER_STORAGE_BUFFER, _vertexPosition.size()*sizeof(float), _vertexPosition.data(), GL_STATIC_COPY);
+    _f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _vertexPositionSSBO);
+    //glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+
+    _f->glGenBuffers(1, &_vertexParentsSSBO);
+    _f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _vertexParentsSSBO);
+    _f->glBufferData(GL_SHADER_STORAGE_BUFFER, _vertexParents.size()*sizeof(float), _vertexParents.data(), GL_STATIC_COPY);
+    _f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, _vertexParentsSSBO);
+
     _displayedPatch = 0;
+
+    _nbPatchs = 2;
+    //creation of two patches
+    /*
+      p0-----p1
+      |   _/|
+      | _/  |
+      |/    |
+      p2-----p3
+      p0(0,1)
+      p1(1,1)
+      p2(0,0)
+      p3(1,0)
+    */
+    //p0
+    _patchTransform.push_back(0);
+    _patchTransform.push_back(1);
+    //p2
+    _patchTransform.push_back(0);
+    _patchTransform.push_back(0);
+    //p1
+    _patchTransform.push_back(1);
+    _patchTransform.push_back(1);
+
+    //p1
+    _patchTransform.push_back(1);
+    _patchTransform.push_back(1);
+    //p2
+    _patchTransform.push_back(0);
+    _patchTransform.push_back(0);
+    //p3
+    _patchTransform.push_back(1);
+    _patchTransform.push_back(0);
+
+
+
+    _patchTessLevel.push_back(2);
+    _patchTessLevel.push_back(2);
+
+
+    _f->glGenBuffers(1, &_patchTransformSSBO);
+    _f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _patchTransformSSBO);
+    _f->glBufferData(GL_SHADER_STORAGE_BUFFER, _patchTransform.size()*sizeof(float), _patchTransform.data(), GL_STATIC_COPY);
+    _f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, _patchTransformSSBO);
+
+    _f->glGenBuffers(1, &_patchTessLevelsSSBO);
+
+    //we allocate each patchIDBuffer with the max number of patchs
+    for(int i=0; i<NB_TESS_LEVELS; ++i){
+      _patchIDBuffer[i] = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+      _patchIDBuffer[i]->create();
+      _patchIDBuffer[i]->bind();
+      _patchIDBuffer[i]->setUsagePattern(QOpenGLBuffer::StaticDraw);
+      _patchIDBuffer[i]->allocate(sizeof(unsigned int)*_nbPatchs);
+      _patchIDBuffer[i]->release();
+    }
+
+    QImage heightMap("../data/heightmaps/gauss1_64x64.png");
+    _heightMap = new QOpenGLTexture(heightMap.mirrored());
+    _heightMap->setMinificationFilter(QOpenGLTexture::Linear);
+    _heightMap->setMagnificationFilter(QOpenGLTexture::Linear);
+
+    _vertexArray.create();
+
   }
 
   void generateTessellatedPatches(){
@@ -39,7 +114,7 @@ class PatchTessTestScene : public Scene {
     Surface_mesh mesh;
     //mesh.reserve(1000,1000,1000);
 
-    
+
     // ##### Properties #####
     Surface_mesh::Vertex_property<Vector3f> point = mesh.get_vertex_property<Vector3f>("v:point");
     //tessellation level
@@ -49,14 +124,14 @@ class PatchTessTestScene : public Scene {
     //vertex child
     Surface_mesh::Vertex_property<Surface_mesh::Vertex> vertex_child = mesh.vertex_property<Surface_mesh::Vertex>("v:child");
     //edge child
-    Surface_mesh::Edge_property<Surface_mesh::Vertex> edge_child = mesh.edge_property<Surface_mesh::Vertex>("e:child");    
+    Surface_mesh::Edge_property<Surface_mesh::Vertex> edge_child = mesh.edge_property<Surface_mesh::Vertex>("e:child");
     //vertex parent1
     Surface_mesh::Vertex_property<Surface_mesh::Vertex> vertex_parent1 = mesh.vertex_property<Surface_mesh::Vertex>("v:parent1");
     //vertex parent2
     Surface_mesh::Vertex_property<Surface_mesh::Vertex> vertex_parent2 = mesh.vertex_property<Surface_mesh::Vertex>("v:parent2");
 
     // ##### Tessellation levels creation loop #####
-    
+
     for(int i=0; i<NB_TESS_LEVELS; ++i){
       //creation of the first level
       if(i==0){
@@ -155,11 +230,11 @@ class PatchTessTestScene : public Scene {
     }
 
     std::cout << "creation loop over" << std::endl;
-    
+
     // ##### fill the tess level vertexIDBuffer with vertices indices
     std::vector<unsigned int> vertexID[NB_TESS_LEVELS];
-    
-    
+
+
     for(Surface_mesh::Face f : mesh.faces()){
       unsigned int level = faceTessLevel[f];
       for(Surface_mesh::Vertex v : mesh.vertices(f)){
@@ -169,7 +244,7 @@ class PatchTessTestScene : public Scene {
 
     for(int i=0; i<NB_TESS_LEVELS; ++i){
       _nbElements[i] = vertexID[i].size();
-      
+
       _vertexIDBuffer[i] = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
       _vertexIDBuffer[i]->create();
       _vertexIDBuffer[i]->bind();
@@ -178,26 +253,21 @@ class PatchTessTestScene : public Scene {
       _vertexIDBuffer[i]->release();
     }
 
-    // ##### fill the vertexPosition vector
+    // ##### fill the vertexPosition and vertexParents vectors
     for(Surface_mesh::Vertex v : mesh.vertices()){
       Vector3f p = point[v];
       _vertexPosition.push_back(p.x());
       _vertexPosition.push_back(p.y());
       _vertexPosition.push_back(p.z());
+      //TODO 4th value is border value
+      _vertexPosition.push_back(0);
+
+      //for parents  0 = no parent (idx = -1)   all idx are shifted by one to fit in an unsigned int
+      /* _vertexParents.push_back(0); */
+      /* _vertexParents.push_back(0); */
+      _vertexParents.push_back(vertex_parent1[v].idx()+1);
+      _vertexParents.push_back(vertex_parent2[v].idx()+1);
     }
-    
-    // ##### fill the vertexParent1 vector
-    for(Surface_mesh::Vertex v : mesh.vertices()){
-      _vertexParent1.push_back(vertex_parent1[v].idx());
-      std::cout << " parent : " << vertex_parent1[v].idx() << std::endl;
-    }
-    
-    // ##### fill the vertexParent2 vector
-    for(Surface_mesh::Vertex v : mesh.vertices()){
-      _vertexParent2.push_back(vertex_parent2[v].idx());
-    }
-    
-    _vertexArray.create();
 
     std::cout << "vertices : " << mesh.n_vertices()
 	      << " edged : " << mesh.n_edges()
@@ -207,7 +277,7 @@ class PatchTessTestScene : public Scene {
 
     std::cout << "vertexPosition size : " << _vertexPosition.size() << std::endl;
 
-    
+
   }
 
   void loadShaders(){
@@ -227,46 +297,93 @@ class PatchTessTestScene : public Scene {
       _needShaderReloading = false;
     }
 
+    if(_culling)
+      _f->glEnable(GL_CULL_FACE);
+    else
+      _f->glDisable(GL_CULL_FACE);
+    if(_fill)
+      _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    else
+      _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    //std::cout << "tess levels : " << _patchTessLevel[0] << " " <<  _patchTessLevel[1] << std::endl;
+
+    //we fill the patchID buffers
+    std::vector<unsigned int> patchID[NB_TESS_LEVELS];
+    float levels[7] = {1, 2, 4, 8, 16, 32, 64};
+    for(unsigned int i=0; i<_nbPatchs; ++i){
+      float level = _patchTessLevel[i];
+      for(unsigned int j=0; j<7; ++j){
+	if(level <= levels[j]){
+	  patchID[j].push_back(i);
+	  break;
+	}
+      }
+    }
+
+    //we copy patch tessellation levels to the ssbo
+    _f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _patchTessLevelsSSBO);
+    _f->glBufferData(GL_SHADER_STORAGE_BUFFER, _patchTessLevel.size()*sizeof(float), _patchTessLevel.data(), GL_DYNAMIC_COPY);
+    _f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, _patchTessLevelsSSBO);
+
     _shader->bind();
 
-    
-    
-    _vertexArray.bind();
-    _vertexIDBuffer[_displayedPatch]->bind();
-	
-    int vertexID_loc = _shader->attributeLocation("vtx_ID");
-    if(vertexID_loc>=0) {
-      //_shader->setAttributeBuffer(vertexID_loc, GL_UNSIGNED_INT, 0, 1, sizeof(unsigned int));
-      _f->glVertexAttribIPointer(vertexID_loc, 1, GL_UNSIGNED_INT, 0, 0);
-      _shader->enableAttributeArray(vertexID_loc);
-    }
+    _heightMap->bind(0);
+    _shader->setUniformValue(_shader->uniformLocation("heightmap"), 0);
 
     _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-    _f->glUniformMatrix4fv(_shader->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
-    _f->glUniformMatrix4fv(_shader->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
 
-    _f->glUniform3fv(_shader->uniformLocation("vertex_position"), _vertexPosition.size(), _vertexPosition.data());
+    for(int patchIt = 0; patchIt < NB_TESS_LEVELS; ++patchIt){
 
-    //_f->glUniform1fv(_shader->uniformLocation("vertex_parent
-    
-    
-    _f->glDrawArrays(GL_TRIANGLES, 0, _nbElements[_displayedPatch]);//_nbElements[_displayedPatch]);
+      _vertexArray.bind();
+      _vertexIDBuffer[patchIt]->bind();
 
-    if(vertexID_loc)
-      _shader->disableAttributeArray(vertexID_loc);
-    _vertexIDBuffer[_displayedPatch]->release();
-    _vertexArray.release();
-    
+      int vertexID_loc = _shader->attributeLocation("vtx_ID");
+      if(vertexID_loc>=0) {
+	//_shader->setAttributeBuffer(vertexID_loc, GL_UNSIGNED_INT, 0, 1, sizeof(unsigned int));
+	_f->glVertexAttribIPointer(vertexID_loc, 1, GL_UNSIGNED_INT, 0, 0);
+	_shader->enableAttributeArray(vertexID_loc);
+      }
+
+      _patchIDBuffer[patchIt]->bind();
+
+      _patchIDBuffer[patchIt]->write(0, patchID[patchIt].data(), sizeof(unsigned int) * patchID[patchIt].size());
+
+      int patchID_loc = _shader->attributeLocation("patch_ID");
+      if(patchID_loc>=0) {
+	//_shader->setAttributeBuffer(vertexID_loc, GL_UNSIGNED_INT, 0, 1, sizeof(unsigned int));
+	_f->glVertexAttribIPointer(patchID_loc, 1, GL_UNSIGNED_INT, 0, 0);
+	_shader->enableAttributeArray(patchID_loc);
+      }
+
+      _f->glVertexAttribDivisor(vertexID_loc, 0);
+      _f->glVertexAttribDivisor(patchID_loc, 1);
+
+
+      _f->glUniformMatrix4fv(_shader->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
+      _f->glUniformMatrix4fv(_shader->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+
+      _f->glUniform1ui(_shader->uniformLocation("patchLevel"), patchIt);
+
+
+      _f->glDrawArraysInstanced(GL_TRIANGLES, 0, _nbElements[patchIt], patchID[patchIt].size());
+
+      if(vertexID_loc)
+	_shader->disableAttributeArray(vertexID_loc);
+      _vertexIDBuffer[patchIt]->release();
+      _vertexArray.release();
+    }
+    _heightMap->release();
     _shader->release();
-    
-    
+
+
   }
 
   void update(float dt) override {
     _camera->update(dt);
   }
-  
+
   void clean() override {
     delete _shader;
   }
@@ -289,25 +406,50 @@ class PatchTessTestScene : public Scene {
 		       _needShaderReloading = true;
 		     });
 
-    VariableOption* displayedPatch = new VariableOption("Displayed patch :", 1, 1, NB_TESS_LEVELS, 1);
-    QObject::connect(displayedPatch, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
-		     [this](double val){
-		       _displayedPatch = (unsigned int)val - 1;
+    QPushButton * toggleWireframeButton = new QPushButton;
+    toggleWireframeButton->setText("Toggle wireframe / fill");
+    VLayout->addWidget(toggleWireframeButton);
 
-		       std::cout << "displayed patch : " << _displayedPatch << std::endl;
+    QObject::connect(toggleWireframeButton, static_cast<void (QPushButton::*)()>(&QPushButton::pressed),
+		     [this](){
+		       _fill = !_fill;
 		     });
-    VLayout->addWidget(displayedPatch);
-    
-    
+
+    QPushButton * toggleCullingButton = new QPushButton;
+    toggleCullingButton->setText("Toggle culling");
+    VLayout->addWidget(toggleCullingButton);
+
+    QObject::connect(toggleCullingButton, static_cast<void (QPushButton::*)()>(&QPushButton::pressed),
+		     [this](){
+		       _culling = !_culling;
+		     });
+
+    VariableOption* firstPatchLevel = new VariableOption("First patch level :", 1, 1, 64, 0.1);
+    QObject::connect(firstPatchLevel, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
+		       _patchTessLevel[0] = val;
+
+		     });
+    VLayout->addWidget(firstPatchLevel);
+
+    VariableOption* secondPatchLevel = new VariableOption("Second patch level :", 1, 1, 64, 0.1);
+    QObject::connect(secondPatchLevel, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
+		     [this](double val){
+		       _patchTessLevel[1] = val;
+
+		     });
+    VLayout->addWidget(secondPatchLevel);
+
+
     VLayout->setAlignment(Qt::AlignTop);
     frame->setLayout(VLayout);
     scrollArea->setWidget(frame);
     dock->setWidget(scrollArea);
     return dock;
   }
-    
+
   virtual void connectToMainWindow(const MainWindow& mw){
-    
+
   }
 
 
@@ -397,22 +539,41 @@ class PatchTessTestScene : public Scene {
   }
 
  private:
-  std::shared_ptr<FreeFlyCamera> _camera;
+
+  bool _fill = true;
+  bool _culling = true;
 
   unsigned int _displayedPatch;
   unsigned int _nbElements[NB_TESS_LEVELS];
+  unsigned int _nbPatchs;
+
+  std::vector<float> _patchTessLevel;
+
 
   std::vector<unsigned int> test;
-  
+
   std::vector<float> _vertexPosition;
-  std::vector<unsigned int> _vertexParent1;
-  std::vector<unsigned int> _vertexParent2;
-  
+  std::vector<unsigned int> _vertexParents;
+
+  std::vector<float> _patchTransform;
+
+  GLuint _vertexPositionSSBO;
+  GLuint _vertexParentsSSBO;
+  GLuint _patchTransformSSBO;
+
+  GLuint _patchTessLevelsSSBO;
+
   QOpenGLShaderProgram * _shader;
 
   QOpenGLVertexArrayObject _vertexArray;
   QOpenGLBuffer* _vertexIDBuffer[NB_TESS_LEVELS];
-  
+
+  QOpenGLBuffer* _patchIDBuffer[NB_TESS_LEVELS];
+
+  QOpenGLTexture *_heightMap = nullptr;
+
+  std::shared_ptr<FreeFlyCamera> _camera;
+
   bool _needShaderReloading;
 };
 
