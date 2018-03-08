@@ -7,16 +7,16 @@ using namespace Eigen;
 
 Terrain::Terrain()
   : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr),
-    _width(0), _height(0), _rows(0), _cols(0)
+    _width(0), _height(0), _rows(0), _cols(0), _heightScale(50.f)
 {
   updateBaseMesh();
 }
 
 void Terrain::setHeightMap(const QImage& heightMap)
 {
-  _heightMapImage = heightMap;
+  _heightMapImage = heightMap.mirrored();
 
-  _heightMap = new QOpenGLTexture(heightMap.mirrored(), QOpenGLTexture::DontGenerateMipMaps);
+  _heightMap = new QOpenGLTexture(_heightMapImage, QOpenGLTexture::DontGenerateMipMaps);
   _heightMap->setMinificationFilter(QOpenGLTexture::Linear);
   _heightMap->setMagnificationFilter(QOpenGLTexture::Linear);
   _heightMap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::ClampToEdge);
@@ -263,10 +263,10 @@ const QImage &Terrain::heightmap() {
   return _heightMapImage;
 }
 
-bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float heightScale, float &tHit) {
+bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float &tHit) {
   Vector3f invDir = dir.cwiseInverse();
   const Vector3f min(0.f, 0.f, 0.f);
-  const Vector3f max(_width, heightScale, _height);
+  const Vector3f max(_width, _heightScale, _height);
 
   /* First, we find the intersection between the ray and the terrain bounding box */
   float tmin, tmax, tymin, tymax, tzmin, tzmax;
@@ -312,26 +312,57 @@ bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float heightS
   if (tzmax < tmax)
     tmax = tzmax;
 
-  std::cout << "tmin : " << tmin << "tmax " << tmax << std::endl;
-
   if (tmin < 0) tmin = 0;
 
   /* We found an intersection with the AABB, let's find the intersection with the terrain by ray marching */
-  float factor = heightScale / 255.f;
-  float deltat = 0.01f;
+  float factor = _heightScale / 255.f;
+  float deltat = 0.1f;
 
-  // If we intersect at the begin of the BBox, we are under the terrain, don't consider it as an intersection
-  Vector3f p = orig + dir * tmin;
-  if (p.y() < qRed(_heightMapImage.pixel((int) p.x(), (int) _height - 1 -  p.z())) * factor)
+  // If we intersect at the begining of the BBox, we are under the terrain, don't consider it as an intersection
+  Vector3f p = orig + dir * (tmin + deltat);
+  if (p.y() < qRed(_heightMapImage.pixel((int) p.x(), (int) p.z())) * factor)
     return false;
 
-  for (float t = tmin + deltat; t <= tmax; t += deltat) {
+  for (float t = tmin + deltat; t <= tmax - deltat; t += deltat) {
     Vector3f p = orig + dir * t;
-    float h = qRed(_heightMapImage.pixel((int) p.x(), (int) _height - 1 -  p.z())) * factor;
+    float h = qRed(_heightMapImage.pixel((int) p.x(), (int) p.z())) * factor;
     if (p.y() < h) {
       tHit = t - 0.5 * deltat;
       return true;
     }
   }
+  std::cout << "No intersection" << std::endl;
   return false;
+}
+
+void Terrain::setHeightScale(float heightScale) {
+  _heightScale = heightScale;
+}
+
+float Terrain::heightScale() {
+  return _heightScale;
+}
+
+float Terrain::getHeight(float x, float z) {
+  int x1 = static_cast<int>(x);
+  int z1 = static_cast<int>(z);
+
+  float Q11 = qRed(_heightMapImage.pixel(x1,     z1));
+  float Q21 = qRed(_heightMapImage.pixel(x1 + 1, z1));
+  float Q12 = qRed(_heightMapImage.pixel(x1,     z1 + 1));
+  float Q22 = qRed(_heightMapImage.pixel(x1 + 1, z1 + 1));
+
+  float dx = x - x1;
+  float dz = z - z1;
+
+  float R1 = Q11 * (1.f - dx) + Q21 * dx;
+  float R2 = Q12 * (1.f - dx) + Q22 * dx;
+
+  float P = R1 * (1.f - dz) + R2 * dz;
+
+  return P * _heightScale / 255.f;
+}
+
+bool Terrain::coordsInTerrain(float x, float z) {
+  return (x >= 0 && x <= _width - 1 && z >= 0 && z <= _height - 1);
 }

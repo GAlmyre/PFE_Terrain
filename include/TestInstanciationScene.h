@@ -10,6 +10,7 @@ using namespace Eigen;
 
 class TestInstanciationScene : public Scene {
  public:
+  TestInstanciationScene() : Scene(), _camera(new FreeFlyCamera) {}
 
   void initialize() override {
 
@@ -17,7 +18,6 @@ class TestInstanciationScene : public Scene {
 
     _needShaderReloading = false;
 
-    _camera = std::make_shared<FreeFlyCamera>();
     _camera->setPosition(Eigen::Vector3f(0, 1, 1));
     _camera->setDirection(-Eigen::Vector3f(0,1,1));
     _camera->setViewport(600, 400);
@@ -261,7 +261,7 @@ class TestInstanciationScene : public Scene {
     return dock;
   }
     
-  virtual void connectToMainWindow(const MainWindow& mw){
+  virtual void connectToMainWindow(MainWindow *mw){
     
   }
 
@@ -353,7 +353,7 @@ class TestInstanciationScene : public Scene {
  private:
   unsigned int _nbInstances;
   
-  QOpenGLShaderProgram * _simpleInstanciationPrg;
+  QOpenGLShaderProgram * _simpleInstanciationPrg = nullptr;
 
   std::shared_ptr<FreeFlyCamera> _camera;
 

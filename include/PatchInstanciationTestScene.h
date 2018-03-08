@@ -2,6 +2,8 @@
 #define TERRAINTINTIN_PATCHINSTANCIATIONTEST_H
 
 #include "Scene.h"
+#include "Terrain.h"
+#include "FreeFlyCamera.h"
 
 #include "VariableOption.h"
 #include "ComboBoxOption.h"
@@ -10,7 +12,7 @@ using namespace Eigen;
 
 class PatchInstanciationTestScene : public Scene {
  public:
-
+  PatchInstanciationTestScene() : Scene(), _camera(new FreeFlyCamera) {}
   void initialize() override {
 
     loadShaders();
@@ -260,7 +262,7 @@ class PatchInstanciationTestScene : public Scene {
     return dock;
   }
     
-  virtual void connectToMainWindow(const MainWindow& mw){
+  virtual void connectToMainWindow(MainWindow *mw){
     
   }
 
@@ -268,6 +270,8 @@ class PatchInstanciationTestScene : public Scene {
   unsigned int _nbInstances;
 
   Terrain _terrain;
+
+  std::shared_ptr<FreeFlyCamera> _camera;
   
   QOpenGLShaderProgram * _shader;
 

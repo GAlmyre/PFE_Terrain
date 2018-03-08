@@ -98,24 +98,20 @@ void MainWindow::createMenu() {
 void MainWindow::loadHeightMap() {
 
   QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),"../data", tr("HeightMap (*.png *.bmp *.pgm *.tga *.ppm)"), Q_NULLPTR, QFileDialog::Options(QFileDialog::DontUseNativeDialog));
-  if (fileName.isNull()) return;
+  if (!fileName.isNull()) loadHeightMap(fileName);
+}
 
-  QFileInfo fileInfo(fileName);
+void MainWindow::loadHeightMap(const QString &filename) {
+  QFileInfo fileInfo(filename);
   QString fileExtension = fileInfo.suffix();
 
   CImg<float> image;
   try {
-    image.assign(fileName.toStdString().c_str());
+    image.assign(filename.toStdString().c_str());
   } catch (const CImgIOException &e) {
-    QMessageBox::about(this, "Error while loading heightmap", "Unable to load the image file located at " + fileName);
+    QMessageBox::about(this, "Error while loading heightmap", "Unable to load the image file located at " + filename);
     return;
   }
-
-//  std::cout << "img : " << image.width()
-//	    << " " << image.height()
-//	    << " " << image.depth()
-//	    << " " << image.spectrum()
-//	    << std::endl;
 
 //  image.print();
 
@@ -125,13 +121,8 @@ void MainWindow::loadHeightMap() {
 //  l[1].print();
 
   /* If image is 16-bits we add 2^16/2, if 8 bits we add 2^8/2 */
-  std::cout << "image max : " << image.max() << std::endl;
-  std::cout << "l min max : " << l[0].min()
-                              << " " << l[0].max()
-                              << " " << l[1].min()
-                              << " " << l[1].max()<< std::endl;
-  l[0] /= 8;
-  l[1] /= 8;
+  l[0] /= 8.f;
+  l[1] /= 8.f;
   if (image.max() > 255.f) {
     l[0] += 32768;
     l[1] += 32768;
@@ -141,9 +132,9 @@ void MainWindow::loadHeightMap() {
   }
 
   std::cout << "l min max : " << l[0].min()
-                              << " " << l[0].max()
-                              << " " << l[1].min()
-                              << " " << l[1].max()<< std::endl;
+            << " " << l[0].max()
+            << " " << l[1].min()
+            << " " << l[1].max()<< std::endl;
 
   image.append(l[0], 'c');
   image.append(l[1], 'c');
@@ -154,6 +145,7 @@ void MainWindow::loadHeightMap() {
 
   emit loadedHeightMap(heightmap);
 }
+
 
 // Handles the opening of a texture
 void MainWindow::loadTexture() {

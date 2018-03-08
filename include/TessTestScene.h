@@ -5,6 +5,7 @@
 
 class TessTestScene : public Scene {
 public:
+
   virtual void initialize() {
     GLfloat vertices[] = {
        // positions       // colors

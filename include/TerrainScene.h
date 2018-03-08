@@ -13,7 +13,6 @@ using namespace Eigen;
 
 class TerrainScene : public Scene {
  public:
-
   enum TexturingMode {CONST_COLOR=0, TEXTURE=1, HEIGHTMAP=2, NORMALS=3, TEXCOORDS=4, TESSLEVEL=5};//if these values are changed make sure to change them in simple.frag the same way
   enum DrawMode {FILL, WIREFRAME, FILL_AND_WIREFRAME};
   enum CameraMode {FREE_FLY};
@@ -21,8 +20,11 @@ class TerrainScene : public Scene {
   enum TessellationMode {CONSTANT = 0, ADAPTATIVE_FROM_POV, ADAPTATIVE_FROM_FIXED_POINT};
   enum AdaptativeMode {DISTANCE = 0, VIEWSPACE = 1};
 
+public:
+  TerrainScene() : Scene(), _camera(new FreeFlyCamera) {}
+
   void initialize() override {
-    //_terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
+    _mainWindow->loadHeightMap("../data/heightmaps/semnoz.png");
     _terrain.setTexture(QImage("../data/textures/sol.jpg"));
 
     loadShaders();
@@ -30,7 +32,6 @@ class TerrainScene : public Scene {
     _needShaderReloading = false;
 
     _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
-    _camera = std::make_shared<FreeFlyCamera>();
     _camera->setPosition(Eigen::Vector3f(10, 100, 10));
     _camera->setDirection(-Eigen::Vector3f(-10,10,-10));
     _camera->setViewport(600, 400);
@@ -84,7 +85,7 @@ class TerrainScene : public Scene {
     {
       _simplePrg->bind();
 
-      _f->glUniform1f(_simplePrg->uniformLocation("heightScale"), _heightScale);
+      _f->glUniform1f(_simplePrg->uniformLocation("heightScale"), _terrain.heightScale());
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
       _f->glUniformMatrix4fv(_simplePrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
       _simplePrg->setUniformValue(_simplePrg->uniformLocation("Ka"), _ambientCoef);
@@ -141,7 +142,7 @@ class TerrainScene : public Scene {
       Vector3f outerLvl = Vector3f::Constant(_constantOuterTessellationLevel);
       _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
-      _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _heightScale);
+      _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _terrain.heightScale());
       _f->glUniform2fv(_simpleTessPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
 
       if (_tessellationMode == TessellationMode::CONSTANT)
@@ -197,6 +198,13 @@ class TerrainScene : public Scene {
   }
 
   void update(float dt) override {
+    if (_camera->grabedToGround()) {
+      Eigen::Vector3f camPos = _camera->position();
+      float h = 0;
+      if (_terrain.coordsInTerrain(camPos.x(), camPos.z()))
+        h = _terrain.getHeight(camPos.x(), camPos.z());
+      _camera->setUpOffset(h);
+    }
     _camera->update(dt);
   }
 
@@ -486,11 +494,11 @@ class TerrainScene : public Scene {
     line2->setFrameShadow(QFrame::Sunken);
     tessellationLayout->addWidget(line2);
 
-    VariableOption * heightScaleFactor = new VariableOption("Height scale factor :", 50, 0, 200, 1);
+    VariableOption * heightScaleFactor = new VariableOption("Height scale factor :", _terrain.heightScale(), 0, 200, 1);
     tessellationLayout->addWidget(heightScaleFactor);
     QObject::connect(heightScaleFactor, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
      [this](double val){
-       _heightScale = val;
+       _terrain.setHeightScale(val);
      });
     return tessellationGroupBox;
   }
@@ -548,18 +556,19 @@ class TerrainScene : public Scene {
     return dock;
   }
 
-  virtual void connectToMainWindow(const MainWindow& mw){
-    QObject::connect(&mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedHeightMap),
+  virtual void connectToMainWindow(MainWindow *mw){
+    QObject::connect(mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedHeightMap),
 		     [this](const QImage& im) {
 		       _terrain.setHeightMap(im);
            _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
            _camera->setSpeed(_defaultCamSpeed);
 		     });
 
-    QObject::connect(&mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedTexture),
+    QObject::connect(mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedTexture),
 		     [this](const QImage& im) {
 		       this->_terrain.setTexture(im);
 		     });
+    _mainWindow = mw;
   }
 
   virtual void resize(int width, int height) {
@@ -584,16 +593,12 @@ class TerrainScene : public Scene {
         _camera->screenPosToRay(mousePos, lineOrig, lineDir);
 
         float t = 0;
-        if (_terrain.intersect(lineOrig, lineDir, _heightScale, t)) {
-          std::cout << "intersected : " << t << std::endl;
+        if (_terrain.intersect(lineOrig, lineDir, t)) {
           lineInterPoint = lineOrig + lineDir * t;
           intersectionFound = true;
         } else {
-          std::cout << "Not intersected" << std::endl;
-          lineInterPoint = lineOrig + lineDir * _terrain.getSize().x();
           intersectionFound = false;
         }
-
       } else {
         _camera->processMousePress(e->x(), e->y());
       }
@@ -629,6 +634,11 @@ class TerrainScene : public Scene {
         break;
       case Qt::Key_F:
         _camera->processKeyPress(FreeFlyCamera::KEY_DOWN);
+        break;
+      case Qt::Key_G:
+        _camera->gradToGround(!_camera->grabedToGround());
+        if (!_camera->grabedToGround())
+          _camera->setUpOffset(0);
         break;
       default:break;
     }
@@ -668,9 +678,9 @@ class TerrainScene : public Scene {
   }
 
 private:
-  QOpenGLShaderProgram *_simplePrg;
-  QOpenGLShaderProgram *_simpleTessPrg;
-  QOpenGLShaderProgram *_fillPrg;
+  QOpenGLShaderProgram *_simplePrg = nullptr;
+  QOpenGLShaderProgram *_simpleTessPrg = nullptr;
+  QOpenGLShaderProgram *_fillPrg = nullptr;
   Terrain _terrain;
   DirectionalLight _light;
   Sphere _testSphere;
@@ -680,7 +690,6 @@ private:
   float _constantInnerTessellationLevel = 1.f;
   float _constantOuterTessellationLevel = 1.f;
   float _adaptativeFactor = 1.f;
-  float _heightScale = 50.f;
   float _ambientCoef = 0.4f;
   float _diffuseCoef = 0.8f;
   float _specularCoef = 0.1f;
@@ -703,6 +712,8 @@ private:
   Eigen::Vector3f lineOrig;
   Eigen::Vector3f lineDir;
   Eigen::Vector3f lineInterPoint;
+
+  MainWindow *_mainWindow;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H

@@ -8,38 +8,21 @@
 using namespace Eigen;
 
 FreeFlyCamera::FreeFlyCamera()
-  : m_position(Vector3f::Zero()), m_direction(Vector3f::UnitZ()), m_yaw(0), m_pitch(0), m_width(800), m_height(600)
-  , m_fovy(M_PI / 3.f), m_near(0.1), m_far(50000), m_mouseOffset(Vector2f(0.f, 0.f)), m_rotating(false)
+  : PerspectiveCamera(), m_position(Vector3f::Zero()), m_direction(Vector3f::UnitZ()), m_yaw(0), m_pitch(0),
+    m_mouseOffset(0.f, 0.f), m_rotating(false), m_upOffset(0), m_grabbed(false)
 {
-  m_viewMatrix.setIdentity();
   setDirection(m_direction);
 
-  updateProjectionMatrix();
   initOffsetBuffer();
   resetKeyStates();
 }
 
 FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height)
+  : PerspectiveCamera(width, height), m_position(position), m_yaw(0), m_pitch(0),
+    m_mouseOffset(0.f, 0.f), m_rotating(false), m_upOffset(0), m_grabbed(false)
 {
-  m_viewMatrix.setIdentity();
-
-  m_mouseOffset = Vector2f(0.f, 0.f);
-  
-  m_position = position;
   setDirection(direction);
 
-  m_yaw = 0;
-  m_pitch = 0;
-
-  m_width = width;
-  m_height = height;
-
-  m_fovy = M_PI / 3.f;
-  m_near = 0.1;
-  m_far = 50000.f;
-  m_rotating = false;
-
-  updateProjectionMatrix();
   initOffsetBuffer();
   resetKeyStates();
 }
@@ -62,36 +45,8 @@ void FreeFlyCamera::setDirection(const Vector3f &direction) {
 
 }
 
-void FreeFlyCamera::setPerspective(float fovY, float near, float far) {
-  m_fovy = fovY;
-  m_near = near;
-  m_far = far;
-  updateProjectionMatrix();
-}
-
-void FreeFlyCamera::setViewport(int width, int height) {
-  m_width = width;
-  m_height = height;
-  updateProjectionMatrix();
-}
-
 void FreeFlyCamera::setSpeed(float speed) {
   m_speed = speed;
-}
-
-void FreeFlyCamera::updateProjectionMatrix() {
-  m_ProjectionMatrix.setIdentity();
-  float aspect = m_width / m_height;
-  float theta = m_fovy * 0.5f;
-  float range = m_far - m_near;
-  float invtan = 1.f / tan(theta);
-
-  m_ProjectionMatrix(0,0) = invtan / aspect;
-  m_ProjectionMatrix(1,1) = invtan;
-  m_ProjectionMatrix(2,2) = -(m_near + m_far) / range;
-  m_ProjectionMatrix(3,2) = -1;
-  m_ProjectionMatrix(2,3) = -2 * m_near * m_far / range;
-  m_ProjectionMatrix(3,3) = 0;
 }
 
 void FreeFlyCamera::updateViewMatrix() {
@@ -109,51 +64,42 @@ void FreeFlyCamera::updateViewMatrix() {
   m_viewMatrix.linear().row(1) = up; // Up
   m_viewMatrix.linear().row(2) = m_direction; // Direction
 
-  m_viewMatrix.translation() = - (m_viewMatrix.linear() * m_position);
-}
 
-const Eigen::Affine3f &FreeFlyCamera::viewMatrix() const {
-  return m_viewMatrix;
-}
-
-const Eigen::Matrix4f &FreeFlyCamera::projectionMatrix() const {
-  return m_ProjectionMatrix;
+  if (m_grabbed)
+    m_viewMatrix.translation() = - (m_viewMatrix.linear() * (m_position + m_upOffset * m_worldUp));
+  else
+    m_viewMatrix.translation() = - (m_viewMatrix.linear() * m_position);
 }
 
 void FreeFlyCamera::screenPosToRay(const Eigen::Vector2i &p, Eigen::Vector3f &orig, Eigen::Vector3f &dir) const {
   orig = m_position;
+  if (grabedToGround())
+    orig += m_upOffset * m_worldUp;
+
   Vector3f localDir = Vector3f( ((2.0 * p[0] / m_width) - 1.0) * tan(m_fovy/2.0) * m_width / m_height,
                                 ((2.0 * (m_height - p[1]) / m_height) - 1.0) * tan(m_fovy/2.0),
-                                -1.0 );
+                                1.0 );
 
-  Vector3f right = m_direction.cross(m_worldUp).normalized();
-  Vector3f up = right.cross(m_direction).normalized();
-
-  dir = (localDir.x() * right + localDir.y() * up + localDir.z() * m_direction).normalized();
+  dir = (localDir.x() * right() + localDir.y() * up() + localDir.z() * direction()).normalized();
 }
 
 float FreeFlyCamera::speed() const {
   return m_speed;
 }
 
-Eigen::Vector2f FreeFlyCamera::viewport() const {
-  return Eigen::Vector2f((float) m_width, (float) m_height);
-}
-
-
-Eigen::Vector3f FreeFlyCamera::position() {
+Eigen::Vector3f FreeFlyCamera::position() const {
   return m_position;
 }
 
-Eigen::Vector3f FreeFlyCamera::direction() {
+Eigen::Vector3f FreeFlyCamera::direction() const {
   return -m_viewMatrix.linear().row(2);
 }
 
-Eigen::Vector3f FreeFlyCamera::up() {
+Eigen::Vector3f FreeFlyCamera::up() const {
   return m_viewMatrix.linear().row(1);
 }
 
-Eigen::Vector3f FreeFlyCamera::right() {
+Eigen::Vector3f FreeFlyCamera::right() const {
   return m_viewMatrix.linear().row(0);
 }
 
@@ -199,10 +145,17 @@ void FreeFlyCamera::update(float dt)
 {
   // Update Position
   Vector3f dir = Vector3f::Zero();
-  if (m_keyStates[KEY_FORWARD])  dir += direction();
-  if (m_keyStates[KEY_BACKWARD]) dir -= direction();
-  if (m_keyStates[KEY_RIGHT])    dir += right();
-  if (m_keyStates[KEY_LEFT])     dir -= right();
+  if (m_grabbed) {
+    if (m_keyStates[KEY_FORWARD])  dir += Vector3f(direction().x(), 0.f, direction().z());
+    if (m_keyStates[KEY_BACKWARD]) dir -= Vector3f(direction().x(), 0.f, direction().z());
+    if (m_keyStates[KEY_RIGHT])    dir += Vector3f(right().x(), 0.f, right().z());
+    if (m_keyStates[KEY_LEFT])     dir -= Vector3f(right().x(), 0.f, right().z());
+  } else {
+    if (m_keyStates[KEY_FORWARD])  dir += direction();
+    if (m_keyStates[KEY_BACKWARD]) dir -= direction();
+    if (m_keyStates[KEY_RIGHT])    dir += right();
+    if (m_keyStates[KEY_LEFT])     dir -= right();
+  }
   if (m_keyStates[KEY_UP])       dir += m_worldUp;
   if (m_keyStates[KEY_DOWN])     dir -= m_worldUp;
 
@@ -316,4 +269,16 @@ void FreeFlyCamera::resetKeyStates() {
   m_keyStates[KEY_RIGHT] = false;
   m_keyStates[KEY_UP] = false;
   m_keyStates[KEY_DOWN] = false;
+}
+
+void FreeFlyCamera::setUpOffset(float offset) {
+  m_upOffset = offset;
+}
+
+bool FreeFlyCamera::grabedToGround() const {
+  return m_grabbed;
+}
+
+void FreeFlyCamera::gradToGround(bool grab) {
+  m_grabbed = grab;
 }

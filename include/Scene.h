@@ -25,7 +25,7 @@ public:
   virtual void clean() = 0;
 
   virtual QDockWidget *createDock() { return nullptr; };
-  virtual void connectToMainWindow(const MainWindow&) { };
+  virtual void connectToMainWindow(MainWindow *mw) { };
 
   virtual void mouseMoveEvent(QMouseEvent *e) {};
   virtual void wheelEvent(QWheelEvent *e) {};

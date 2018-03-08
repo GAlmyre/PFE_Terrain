@@ -23,6 +23,8 @@ public:
   explicit MainWindow(QWidget *parent = 0);
   ~MainWindow();
 
+  void loadHeightMap(const QString &filename);
+
 protected:
   void keyPressEvent(QKeyEvent *e);
 

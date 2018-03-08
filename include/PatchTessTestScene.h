@@ -13,14 +13,13 @@ using namespace surface_mesh;
 
 class PatchTessTestScene : public Scene {
  public:
-
+  PatchTessTestScene() : Scene(), _camera(new FreeFlyCamera) {}
   void initialize() override {
 
     loadShaders();
 
     _needShaderReloading = false;
 
-    _camera = std::make_shared<FreeFlyCamera>();
     _camera->setPosition(Eigen::Vector3f(1.5, 1.5, 1.5));
     _camera->setDirection(-Eigen::Vector3f(1,1,1));
     _camera->setViewport(600, 400);
@@ -563,7 +562,7 @@ class PatchTessTestScene : public Scene {
 
   GLuint _patchTessLevelsSSBO;
 
-  QOpenGLShaderProgram * _shader;
+  QOpenGLShaderProgram * _shader = nullptr;
 
   QOpenGLVertexArrayObject _vertexArray;
   QOpenGLBuffer* _vertexIDBuffer[NB_TESS_LEVELS];
