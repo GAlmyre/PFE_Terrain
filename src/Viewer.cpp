@@ -24,11 +24,11 @@ Viewer::Viewer(QMainWindow *parent)
   timer->start(5);
 
   // Create Scene
-//  _scene = std::make_shared<TerrainScene>();
+  _scene = std::make_shared<TerrainScene>();
 //  _scene = std::make_shared<PatchTessTestScene>();
 //  _scene = std::make_shared<TessTerrainScene>();
 //  _scene = std::make_shared<TessTestScene>();
-  _scene = std::make_shared<TestInstanciationScene>();
+//  _scene = std::make_shared<TestInstanciationScene>();
 
   // If a dock is related to the current scene, create it
   QDockWidget *dock = _scene->getDock();

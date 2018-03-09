@@ -26,6 +26,9 @@ public:
   void initialize() override {
     _mainWindow->loadHeightMap("../data/heightmaps/semnoz.png");
     _terrain.setTexture(QImage("../data/textures/sol.jpg"));
+    _colormap = new QOpenGLTexture(QImage("../data/textures/parula_colormap.png").mirrored());
+    _colormap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::ClampToEdge);
+    _colormap->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::ClampToEdge);
 
     loadShaders();
 
@@ -100,6 +103,9 @@ public:
       _f->glUniform3fv(_simplePrg->uniformLocation("lightDirection"), 1, lightDir.data());
       _f->glUniform3fv(_simplePrg->uniformLocation("lightColor"), 1, lightColor.data());
 
+      _colormap->bind(3);
+      _simplePrg->setUniformValue(_simplePrg->uniformLocation("colormap"), 3);
+
 
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
         _f->glDepthFunc(GL_LESS);
@@ -144,6 +150,9 @@ public:
       _f->glUniform1f(_simpleTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
       _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _terrain.heightScale());
       _f->glUniform2fv(_simpleTessPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
+
+      _colormap->bind(3);
+      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("colormap"), 3);
 
       if (_tessellationMode == TessellationMode::CONSTANT)
         _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), TessellationMode::CONSTANT);
@@ -210,6 +219,7 @@ public:
 
   void clean() override {
     delete _simplePrg;
+    delete _colormap;
     _terrain.clean();
   }
 
@@ -681,6 +691,7 @@ private:
   QOpenGLShaderProgram *_simplePrg = nullptr;
   QOpenGLShaderProgram *_simpleTessPrg = nullptr;
   QOpenGLShaderProgram *_fillPrg = nullptr;
+  QOpenGLTexture *_colormap = nullptr;
   Terrain _terrain;
   DirectionalLight _light;
   Sphere _testSphere;
