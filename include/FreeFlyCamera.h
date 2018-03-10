@@ -19,15 +19,11 @@ public:
   // Set camera direction
   void setDirection(const Eigen::Vector3f &direction);
 
-  // Set speed
-  void setSpeed(float speed);
   //Centre la caméra sur une bounding box
   void centerOnAABB(const Eigen::AlignedBox<float, 3> &bBox, const Eigen::Vector3f &dir = Eigen::Vector3f(0.f, 0.f, 0.f));
 
   // Throw a ray through screen
   void screenPosToRay(const Eigen::Vector2i &p, Eigen::Vector3f &orig, Eigen::Vector3f &dir) const override;
-
-  float speed() const;
 
   bool grabedToGround() const;
   void gradToGround(bool grab);
@@ -67,8 +63,6 @@ private:
   float m_pitch;
 
   // Movements
-  float m_speed = 0.01;
-  float m_sensitivity = 0.0005;
   std::map<Key, bool> m_keyStates;
   bool m_rotating;
   float m_upOffset;

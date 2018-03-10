@@ -7,9 +7,14 @@
 class Camera {
 public:
   typedef enum { KEY_FORWARD = 0, KEY_BACKWARD, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN } Key;
+  typedef enum { LEFT = 0, RIGHT, MIDDLE } Button;
 
 public:
   Camera();
+
+  // Set speed
+  void setSpeed(float speed);
+  float speed() const;
 
   // View and projection matrix getters
   virtual const Eigen::Affine3f &viewMatrix() const;
@@ -34,6 +39,10 @@ protected:
   // Projection and View matrices
   Eigen::Matrix4f m_ProjectionMatrix;
   Eigen::Affine3f m_viewMatrix;
+
+  // Movements
+  float m_speed = 0.01;
+  float m_sensitivity = 0.0005;
 };
 
 /* Base class for perspective camera */

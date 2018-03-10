@@ -45,10 +45,6 @@ void FreeFlyCamera::setDirection(const Vector3f &direction) {
 
 }
 
-void FreeFlyCamera::setSpeed(float speed) {
-  m_speed = speed;
-}
-
 void FreeFlyCamera::updateViewMatrix() {
   m_viewMatrix.setIdentity();
 
@@ -81,10 +77,6 @@ void FreeFlyCamera::screenPosToRay(const Eigen::Vector2i &p, Eigen::Vector3f &or
                                 1.0 );
 
   dir = (localDir.x() * right() + localDir.y() * up() + localDir.z() * direction()).normalized();
-}
-
-float FreeFlyCamera::speed() const {
-  return m_speed;
 }
 
 Eigen::Vector3f FreeFlyCamera::position() const {

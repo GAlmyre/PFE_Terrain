@@ -9,7 +9,7 @@ Terrain::Terrain()
   : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr),
     _width(0), _height(0), _rows(0), _cols(0), _heightScale(50.f)
 {
-  updateBaseMesh();
+  //updateBaseMesh();
 }
 
 void Terrain::setHeightMap(const QImage& heightMap)
@@ -122,85 +122,112 @@ void Terrain::updateBaseMesh()
   if(_heightMap)
   {
     std::cout << "updateBaseMesh image loaded" << std::endl;
-    int w,h,gridw, gridh;
-    w = _heightMap->width();
-    h = _heightMap->height();
-    gridw = w/_pixelsPerPatch;
-    gridh = h/_pixelsPerPatch;
-    if(w%_pixelsPerPatch)
-      gridw++;
-    if(h%_pixelsPerPatch)
-      gridh++;
-    createGrid(w, h, gridw, gridh, false);
-    _width = w;
-    _height = h;
-    _rows = gridh;
-    _cols = gridw;
-  }
-  else
-  {
+    _width = _heightMap->width();
+    _height = _heightMap->height();
+    _cols = _width / _pixelsPerPatch;
+    _rows = _height / _pixelsPerPatch;
+
+    if(_width % _pixelsPerPatch)
+      _cols++;
+    if(_height % _pixelsPerPatch)
+      _rows++;
+
+    createGrid(_width,_height, _cols, _rows, false);
+  } else {
     //for debug purpose only we create a grid without height map
     //should clear the mesh instead
-    createGrid(5,5,10,10, false);
     _width = 5;
     _height = 5;
     _rows = 10;
     _cols = 10;
+    createGrid(_width, _height, _cols, _rows, false);
   }
 }
 
-void Terrain::createGrid(float width, float height, unsigned int nbRows, unsigned int nbColumns, bool quads)
+void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigned int nbRows, bool quads)
 {
   Surface_mesh::Vertex_property<Vector3f> points = _baseMesh.get_vertex_property<Vector3f>("v:point");
   Surface_mesh::Vertex_property<Vector3f> normals = _baseMesh.vertex_property<Vector3f>("v:normal");
   Surface_mesh::Vertex_property<Vector2f> texcoords  = _baseMesh.vertex_property<Vector2f>("v:texcoords");
+  Surface_mesh::Vertex_property<float> elevation = _baseMesh.vertex_property<float>("v:elevation");
+  Surface_mesh::Face_property<int> maxElevation = _baseMesh.face_property<int>("f:maxElevation");
+
   _baseMesh.clear();
-  int nbVertices = (nbRows+1)*(nbColumns+1);
-  int nbFaces = nbRows*nbColumns;
-  int nbEdges = nbRows*(nbColumns+1)+nbColumns*(nbRows+1);
+
+  int nbVertices = (nbCols+1)*(nbRows+1);
+  int nbFaces = nbCols*nbRows;
+  int nbEdges = nbCols*(nbRows+1)+nbRows*(nbCols+1);
   if(!quads){
     nbEdges += nbFaces;//we add one edge per quad to divide it in two triangles
     nbFaces *= 2;
   }
+
   _baseMesh.reserve(nbVertices, nbEdges, nbFaces);
+
   Surface_mesh::Vertex v1, v2, v3, v4;
   Surface_mesh::Vertex * verts = new Surface_mesh::Vertex[nbVertices];
 
   //1st step : creating all the vertices
   int cpt = 0;
-  for(int i=0; i < nbRows+1; ++i)
-    for(int j=0; j < nbColumns+1; ++j){
-      float normPos_i = (float)i/nbRows, normPos_j = (float)j/nbColumns;
-      v1 = _baseMesh.add_vertex(Vector3f(normPos_i*width, 0, normPos_j*height));
-      normals[v1] = Vector3f(normPos_i*width, 0, normPos_j*height);
-      texcoords[v1] = Vector2f(normPos_i,normPos_j);
-      verts[cpt++] = v1;   
+  for(int i=0; i < nbCols+1; ++i) {
+    for (int j = 0; j < nbRows + 1; ++j) {
+      float normPos_i = (float) i / nbCols, normPos_j = (float) j / nbRows;
+      v1 = _baseMesh.add_vertex(Vector3f(normPos_i * width, 0, normPos_j * height));
+      normals[v1] = Vector3f(normPos_i * width, 0, normPos_j * height);
+      elevation[v1] = getHeight(normPos_i * (width - 1), normPos_j * (height - 1));
+      texcoords[v1] = Vector2f(normPos_i, normPos_j);
+      verts[cpt++] = v1;
     }
+  }
+
+  int patchWidth = width / nbCols;
+  int patchHeight = height / nbRows;
+  float slope = - patchHeight / patchWidth;
   //2nd step : creating all the faces
-   int lineOffset = -1;
-  for(int i=0; i < nbRows*nbColumns; ++i){
-    if(i%nbColumns==0)
+  int lineOffset = -1;
+  for(int i=0; i < nbCols*nbRows; ++i){
+    if(i%nbRows==0)
       lineOffset++;
     int p1, p2, p3, p4;
     /* we get p1 p2 p3 p4 the indices of the vertices of the ith quad patch 
-       p1 --- p2
+       p2 --- p4
        |      |
        |      |
-       p3 --- p4
+       p1 --- p3
     */
-    p1 = i+lineOffset;    p2 = p1+1;
-    p3 = p1+nbColumns+1;  p4 = p3+1;
-    v1 = verts[p1];       v2 = verts[p2];
-    v3 = verts[p3];       v4 = verts[p4];
+    p1 = i+lineOffset; p2 = p1+1;
+    p3 = p1+nbRows+1;  p4 = p3+1;
+    v1 = verts[p1];    v2 = verts[p2];
+    v3 = verts[p3];    v4 = verts[p4];
     if(quads){
       _baseMesh.add_quad(v1, v3, v4, v2);
-    }
-    else{
+    } else {
       //split the quad into two triangles
-      _baseMesh.add_triangle(v1, v3, v2);
-      _baseMesh.add_triangle(v2, v3, v4);
+      Surface_mesh::Face f0 = _baseMesh.add_triangle(v1, v3, v2);
+      Surface_mesh::Face f1 = _baseMesh.add_triangle(v2, v3, v4);
+
+      int f0MeanElevation = (elevation[v1] + elevation[v2] + elevation[v3]) / 3.f;
+      int f1MeanElevation = (elevation[v2] + elevation[v3] + elevation[v4]) / 3.f;
+
+      /* Compute faces max elevation */
+      int x1 = _baseMesh.position(v1).x();
+      int y1 = _baseMesh.position(v1).z();
+
+      int f0MaxElevation = 0, f1MaxElevation = 0;
+      for (int x = 0; x < patchWidth; x++) {
+        int yDiag = slope * x + patchHeight;
+        for (int y = 0; y < yDiag; y++) {
+          f0MaxElevation = std::max(qRed(_heightMapImage.pixel(x + x1, y + y1)), f0MaxElevation);
+        }
+        for (int y = yDiag; y < patchHeight; y++) {
+          f1MaxElevation = std::max(qRed(_heightMapImage.pixel(x + x1, y + y1)), f1MaxElevation);
+        }
+      }
+      maxElevation[f0] = f0MaxElevation - f0MeanElevation;
+      maxElevation[f1] = f1MaxElevation - f1MeanElevation;
     }
   }
+
   delete[] verts;
   fillMeshBuffers();
 }
@@ -222,13 +249,13 @@ void Terrain::fillMeshBuffers()
   Vector3f normal;
   Vector2f tex;
   for(vit = _baseMesh.vertices_begin(); vit != _baseMesh.vertices_end(); ++vit)
-    {
-      pos = vertices[*vit];
-      normal = vnormals[*vit];
-      if(texcoords)
-	tex = texcoords[*vit];
-      _vertices.push_back(Mesh::Vertex(pos,normal,tex));
-    }
+  {
+    pos = vertices[*vit];
+    normal = vnormals[*vit];
+    if(texcoords)
+      tex = texcoords[*vit];
+    _vertices.push_back(Mesh::Vertex(pos,normal,tex));
+  }
 
   // face iterator
   Surface_mesh::Face_iterator fit, fend = _baseMesh.faces_end();
@@ -236,21 +263,21 @@ void Terrain::fillMeshBuffers()
   Surface_mesh::Vertex_around_face_circulator fvit, fvend;
   Surface_mesh::Vertex v0, v1, v2;
   for (fit = _baseMesh.faces_begin(); fit != fend; ++fit)
-    {
-      fvit = fvend = _baseMesh.vertices(*fit);
-      v0 = *fvit;
+  {
+    fvit = fvend = _baseMesh.vertices(*fit);
+    v0 = *fvit;
+    ++fvit;
+    v2 = *fvit;
+
+    do {
+      v1 = v2;
       ++fvit;
       v2 = *fvit;
-
-      do{
-	v1 = v2;
-	++fvit;
-	v2 = *fvit;
-	_indices.push_back(v0.idx());
-	_indices.push_back(v1.idx());
-	_indices.push_back(v2.idx());
-      } while (++fvit != fvend);
-    }
+      _indices.push_back(v0.idx());
+      _indices.push_back(v1.idx());
+      _indices.push_back(v2.idx());
+    } while (++fvit != fvend);
+  }
 }
 
 void Terrain::clean() {
@@ -344,16 +371,16 @@ float Terrain::heightScale() {
 }
 
 float Terrain::getHeight(float x, float z) {
-  int x1 = static_cast<int>(x);
-  int z1 = static_cast<int>(z);
+  int x1 = std::max(std::min(static_cast<int>(x), _width - 2), 0);
+  int z1 = std::max(std::min(static_cast<int>(z), _height - 2), 0);
 
   float Q11 = qRed(_heightMapImage.pixel(x1,     z1));
   float Q21 = qRed(_heightMapImage.pixel(x1 + 1, z1));
   float Q12 = qRed(_heightMapImage.pixel(x1,     z1 + 1));
   float Q22 = qRed(_heightMapImage.pixel(x1 + 1, z1 + 1));
 
-  float dx = x - x1;
-  float dz = z - z1;
+  float dx = std::min(std::max(x - x1, 0.f), 1.f);
+  float dz = std::min(std::max(z - z1, 0.f), 1.f);
 
   float R1 = Q11 * (1.f - dx) + Q21 * dx;
   float R2 = Q12 * (1.f - dx) + Q22 * dx;
@@ -365,4 +392,7 @@ float Terrain::getHeight(float x, float z) {
 
 bool Terrain::coordsInTerrain(float x, float z) {
   return (x >= 0 && x <= _width - 1 && z >= 0 && z <= _height - 1);
+}
+
+float Terrain::getHeightFromNormalizedCoords(float x, float z) {
 }

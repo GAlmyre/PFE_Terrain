@@ -1,3 +1,4 @@
+#include <FreeFlyCamera.h>
 #include "Camera.h"
 
 using namespace Eigen;
@@ -5,6 +6,14 @@ using namespace Eigen;
 Camera::Camera() {
   m_ProjectionMatrix = Eigen::Matrix4f::Identity();
   m_viewMatrix = Eigen::Affine3f::Identity();
+}
+
+void Camera::setSpeed(float speed) {
+  m_speed = speed;
+}
+
+float Camera::speed() const {
+  return m_speed;
 }
 
 const Eigen::Matrix4f &Camera::projectionMatrix() const {

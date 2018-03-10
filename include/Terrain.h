@@ -23,6 +23,7 @@ class Terrain : public Mesh
   float heightScale();
 
   float getHeight(float x, float z);
+  float getHeightFromNormalizedCoords(float x, float z);
   bool coordsInTerrain(float x, float z);
 
   void draw(QOpenGLShaderProgram &shader);
@@ -36,7 +37,9 @@ class Terrain : public Mesh
   void updateBaseMesh();
   void clean();
 
- private:
+  void createGrid(float width, float height, unsigned int nbCols, unsigned int nbRows, bool quads);
+
+private:
   QOpenGLTexture *_heightMap = nullptr;
   QOpenGLTexture *_texture = nullptr;
   QImage _heightMapImage;
@@ -46,10 +49,9 @@ class Terrain : public Mesh
   int _width, _height, _rows, _cols;
   float _heightScale;
 
- public:
-  void createGrid(float width, float height, unsigned int nb_rows, unsigned int nb_columns, bool quads);
  private:
   void fillMeshBuffers();
+  void computeFaceMaxElevation(int x0, int x1, int y0, int y1);
 
   //hardware tessellation
   surface_mesh::Surface_mesh _baseMesh;
