@@ -2,6 +2,7 @@
 
 #include "Terrain.h"
 #include "OpenGL.h"
+#include "utils.h"
 
 using namespace surface_mesh;
 using namespace Eigen;
@@ -126,8 +127,7 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
   Surface_mesh::Vertex_property<Vector3f> points = _baseMesh.get_vertex_property<Vector3f>("v:point");
   Surface_mesh::Vertex_property<Vector3f> normals = _baseMesh.vertex_property<Vector3f>("v:normal");
   Surface_mesh::Vertex_property<Vector2f> texcoords  = _baseMesh.vertex_property<Vector2f>("v:texcoords");
-  Surface_mesh::Vertex_property<float> elevation = _baseMesh.vertex_property<float>("v:elevation");
-  Surface_mesh::Face_property<int> maxElevation = _baseMesh.face_property<int>("f:maxElevation");
+  Surface_mesh::Face_property<float> maxElevation = _baseMesh.face_property<float>("f:maxElevation");
 
   _baseMesh.clear();
 
@@ -151,31 +151,31 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
       float normPos_i = (float) i / nbCols, normPos_j = (float) j / nbRows;
       v1 = _baseMesh.add_vertex(Vector3f(normPos_i * width, 0, normPos_j * height));
       normals[v1] = Vector3f(normPos_i * width, 0, normPos_j * height);
-      elevation[v1] = getHeight(normPos_i * (width - 1), normPos_j * (height - 1), false);
       texcoords[v1] = Vector2f(normPos_i, normPos_j);
       verts[cpt++] = v1;
     }
   }
 
-  int patchWidth = width / nbCols;
-  int patchHeight = height / nbRows;
-  float slope = - patchHeight / patchWidth;
+  float patchWidth = width / nbCols;
+  float patchHeight = height / nbRows;
+  float slope = - (float) patchHeight / (float) patchWidth;
   //2nd step : creating all the faces
   int lineOffset = -1;
   for(int i=0; i < nbCols*nbRows; ++i){
     if(i%nbRows==0)
       lineOffset++;
-    int p1, p2, p3, p4;
-    /* we get p1 p2 p3 p4 the indices of the vertices of the ith quad patch 
-       p2 --- p4
-       |      |
-       |      |
-       p1 --- p3
+    int i1, i2, i3, i4;
+    /* we get p1 i2 p3 p4 the indices of the vertices of the ith quad patch
+       v2 ---- v4
+       | `     |
+       |   `   |
+       |     ` |
+       v1 ---- v3
     */
-    p1 = i+lineOffset; p2 = p1+1;
-    p3 = p1+nbRows+1;  p4 = p3+1;
-    v1 = verts[p1];    v2 = verts[p2];
-    v3 = verts[p3];    v4 = verts[p4];
+    i1 = i+lineOffset; i2 = i1+1;
+    i3 = i1+nbRows+1;  i4 = i3+1;
+    v1 = verts[i1];    v2 = verts[i2];
+    v3 = verts[i3];    v4 = verts[i4];
     if(quads){
       _baseMesh.add_quad(v1, v3, v4, v2);
     } else {
@@ -183,25 +183,38 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
       Surface_mesh::Face f0 = _baseMesh.add_triangle(v1, v3, v2);
       Surface_mesh::Face f1 = _baseMesh.add_triangle(v2, v3, v4);
 
-      int f0MeanElevation = (elevation[v1] + elevation[v2] + elevation[v3]) / 3.f;
-      int f1MeanElevation = (elevation[v2] + elevation[v3] + elevation[v4]) / 3.f;
+      /* Here, we will compute the lod based on the heightmap elevation in the triangles */
+      Vector3f p1 = points[v1]; p1 += getHeight(p1.x(), p1.z(), false) * Vector3f::UnitY();
+      Vector3f p2 = points[v2]; p2 += getHeight(p2.x(), p2.z(), false) * Vector3f::UnitY();
+      Vector3f p3 = points[v3]; p3 += getHeight(p3.x(), p3.z(), false) * Vector3f::UnitY();
+      Vector3f p4 = points[v4]; p4 += getHeight(p4.x(), p4.z(), false) * Vector3f::UnitY();
 
-      /* Compute faces max elevation */
-      int x1 = _baseMesh.position(v1).x();
-      int y1 = _baseMesh.position(v1).z();
+      // Planes corresponding to the 2 faces
+      Hyperplane<float, 3> plane0 = Hyperplane<float, 3>::Through(p1, p2, p3);
+      Hyperplane<float, 3> plane1 = Hyperplane<float, 3>::Through(p2, p3, p4);
 
-      int f0MaxElevation = 0, f1MaxElevation = 0;
-      for (int x = 0; x < patchWidth; x++) {
-        int yDiag = slope * x + patchHeight;
-        for (int y = 0; y < yDiag; y++) {
-          f0MaxElevation = std::max(qRed(_heightMapImage.pixel(x + x1, y + y1)), f0MaxElevation);
+      /* Compute heightmap max elevation above the face planes */
+      float x1 = p1.x(), z1 = p1.z();
+      float f0MaxElevation = 0.f, f1MaxElevation = 0.f;
+
+      for (float x = 0.f; x < patchWidth; x += 1.f) {
+        // Find the z range for the first triangle
+        int zDiag = slope * x + patchHeight;
+        // Triangle 0 rasterization
+        for (int z = 0; z < zDiag; z += 1.f) {
+          float h = getHeight(x + x1, z + z1, false);
+          float hPlane = getY(plane0, x + x1, z + z1);
+          f0MaxElevation = std::max(std::abs(h - hPlane), f0MaxElevation);
         }
-        for (int y = yDiag; y < patchHeight; y++) {
-          f1MaxElevation = std::max(qRed(_heightMapImage.pixel(x + x1, y + y1)), f1MaxElevation);
+        // Triangle 1 rasterization
+        for (float z = zDiag; z < patchHeight; z++) {
+          float h = getHeight(x + x1, z + z1, false);
+          float hPlane = getY(plane1, x + x1, z + z1);
+          f1MaxElevation = std::max(std::abs(h - hPlane), f1MaxElevation);
         }
       }
-      maxElevation[f0] = f0MaxElevation - f0MeanElevation;
-      maxElevation[f1] = f1MaxElevation - f1MeanElevation;
+      maxElevation[f0] = f0MaxElevation;
+      maxElevation[f1] = f1MaxElevation;
     }
   }
 
@@ -333,27 +346,42 @@ void Terrain::fillVertexArrayBuffer() {
 
   Surface_mesh::Vertex_property<Vector3f> positions = _baseMesh.get_vertex_property<Vector3f>("v:point");
   Surface_mesh::Vertex_property<Vector2f> texcoords  = _baseMesh.vertex_property<Vector2f>("v:texcoords");
+  Surface_mesh::Face_property<float> maxElevation = _baseMesh.face_property<float>("f:maxElevation");
 
   // face iterator
   Surface_mesh::Face_iterator fit, fend = _baseMesh.faces_end();
   // vertex circulator
-  Surface_mesh::Vertex_around_face_circulator fvit, fvend;
   Surface_mesh::Vertex v0, v1, v2;
   for (fit = _baseMesh.faces_begin(); fit != fend; ++fit)
   {
-    fvit = fvend = _baseMesh.vertices(*fit);
-    v0 = *fvit;
-    ++fvit;
-    v2 = *fvit;
+    float faceLOD = maxElevation[*fit];
 
-    do {
-      v1 = v2;
-      ++fvit;
-      v2 = *fvit;
-      vertices.emplace_back(positions[v0], texcoords[v0], 0, 0);
-      vertices.emplace_back(positions[v1], texcoords[v1], 0, 0);
-      vertices.emplace_back(positions[v2], texcoords[v2], 0, 0);
-    } while (++fvit != fvend);
+    Surface_mesh::Halfedge he0 = _baseMesh.halfedge(*fit);
+    Surface_mesh::Halfedge he1 = _baseMesh.next_halfedge(he0);
+    Surface_mesh::Halfedge he2 = _baseMesh.next_halfedge(he1);
+
+    v0 = _baseMesh.from_vertex(he0);
+    v1 = _baseMesh.from_vertex(he1);
+    v2 = _baseMesh.from_vertex(he2);
+
+    Surface_mesh::Face oppositef0 = _baseMesh.face(_baseMesh.opposite_halfedge(he1));
+    Surface_mesh::Face oppositef1 = _baseMesh.face(_baseMesh.opposite_halfedge(he2));
+    Surface_mesh::Face oppositef2 = _baseMesh.face(_baseMesh.opposite_halfedge(he0));
+
+    float edgeLOD[3] = { faceLOD, faceLOD, faceLOD };
+    if (oppositef0.is_valid()) {
+      edgeLOD[0] = (edgeLOD[0] + maxElevation[oppositef0]) / 2.f;
+    }
+    if (oppositef1.is_valid()) {
+      edgeLOD[1] = (edgeLOD[1] + maxElevation[oppositef1]) / 2.f;
+    }
+    if (oppositef2.is_valid()) {
+      edgeLOD[2] = (edgeLOD[2] + maxElevation[oppositef2]) / 2.f;
+    }
+
+    vertices.emplace_back(positions[v0], texcoords[v0], edgeLOD[0], faceLOD);
+    vertices.emplace_back(positions[v1], texcoords[v1], edgeLOD[1], faceLOD);
+    vertices.emplace_back(positions[v2], texcoords[v2], edgeLOD[2], faceLOD);
   }
 
   GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();

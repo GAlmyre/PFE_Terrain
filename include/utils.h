@@ -2,6 +2,7 @@
 #define TERRAINTINTIN_UTILS_H
 
 #include <cmath>
+#include <Eigen/Geometry>
 
 #undef M_PI
 
@@ -17,5 +18,10 @@ inline float radToDeg(float value) { return value * (180.0f / M_PI); }
 
 /// Convert degrees to radians
 inline float degToRad(float value) { return value * (M_PI / 180.0f); }
+
+inline float getY(const Eigen::Hyperplane<float, 3> &plane, float x, float z) {
+  const auto &c = plane.coeffs();
+  return - (c[0] * x + c[2]* z + c[3]) / c[1];
+}
 
 #endif //TERRAINTINTIN_UTILS_H

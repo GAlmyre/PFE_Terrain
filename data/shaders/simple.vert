@@ -21,6 +21,8 @@ out FragData {
 out VertexData {
   vec4 position;
   vec2 texcoord;
+  float edgeLOD;
+  float faceLOD;
 } vs_out;
 //*/
 
@@ -30,8 +32,11 @@ void main()
 
   vs_out.position = vec4(vtx_position, 1.);
   vs_out.texcoord = vtx_texcoord;
+  vs_out.edgeLOD = vtx_edgeLOD;
+  vs_out.faceLOD = vtx_faceLOD;
+
   vs_to_fs.viewDirection = -gl_Position.xyz;
   vs_to_fs.texcoord = vtx_texcoord;
-  vs_to_fs.tessLevel = 1.f;
+  vs_to_fs.tessLevel = vtx_faceLOD;
   vs_to_fs.distance = length((view*model*vec4(vtx_position,1.)).xyz);
 }

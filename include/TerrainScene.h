@@ -18,7 +18,7 @@ class TerrainScene : public Scene {
   enum CameraMode {FREE_FLY};
   enum TessellationMethod {NO_TESSELLATION, HARDWARE, INSTANCIATION};
   enum TessellationMode {CONSTANT = 0, ADAPTATIVE_FROM_POV, ADAPTATIVE_FROM_FIXED_POINT};
-  enum AdaptativeMode {DISTANCE = 0, VIEWSPACE = 1};
+  enum AdaptativeMode {DISTANCE = 0, VIEWSPACE = 1, CONTENT = 2};
 
 public:
   TerrainScene() : Scene(), _camera(new FreeFlyCamera) {}
@@ -485,6 +485,7 @@ public:
     ComboBoxOption * adaptativeTessMode = new ComboBoxOption("LOD method");
     adaptativeTessMode->addItem("Distance", AdaptativeMode::DISTANCE);
     adaptativeTessMode->addItem("Viewspace", AdaptativeMode::VIEWSPACE);
+    adaptativeTessMode->addItem("Content Aware", AdaptativeMode::CONTENT);
     adaptativeTessMode->setCurrentIndex(_adaptativeTessellationMode);
     QObject::connect(adaptativeTessMode, static_cast<void (ComboBoxOption::*)(int)>(&ComboBoxOption::activated),
 		     [this](int data) {

@@ -5,6 +5,8 @@ layout(vertices = 3) out;
 in VertexData {
     vec4 position;
     vec2 texcoord;
+    float edgeLOD;
+    float faceLOD;
 } tcs_in[];
 
 out VertexData {
@@ -14,6 +16,7 @@ out VertexData {
 const int CONSTANT = 0;
 const int APADTIVE_DISTANCE = 1;
 const int APADTIVE_VIEWSPACE = 2;
+const int APADTIVE_ELEVATION = 3;
 
 uniform float TessLevelInner;
 uniform vec3 TessLevelOuter;
@@ -53,6 +56,18 @@ float viewspaceLOD(vec4 center, float radius) {
     // d = 64 -> tesselation ->return 64
 
     return clamp(d / 30, 0, 64);
+}
+
+float projectedLOD(vec3 point, float elevation) {
+    vec4 clip0 = projection * view * model * vec4(point, 1.f);
+    vec4 clip1 = projection * view * model * vec4(point.x, point.y + elevation, point.z, 1.f);
+
+    vec2 ndc0 = clip0.xy / clip0.w * viewport;
+    vec2 ndc1 = clip1.xy / clip1.w * viewport;
+
+    float dist = distance(ndc0, ndc1);
+
+    return clamp(dist / 200.f, 0.f, 64.f);
 }
 
 void main() {
@@ -104,6 +119,22 @@ void main() {
             gl_TessLevelOuter[0] = lvl0;
             gl_TessLevelOuter[1] = lvl1;
             gl_TessLevelOuter[2] = lvl2;
+        } else if (tessMethod == APADTIVE_ELEVATION) {
+            vec3 v0 = tcs_in[0].position.xyz;
+            vec3 v1 = tcs_in[1].position.xyz;
+            vec3 v2 = tcs_in[2].position.xyz;
+
+            vec3 centerEdge0 = v1 + (v2 - v1) / 2.f;
+            vec3 centerEdge1 = v2 + (v0 - v2) / 2.f;
+            vec3 centerEdge2 = v0 + (v1 - v0) / 2.f;
+
+            // Triangle Barycenter
+            vec3 center = 2.f / 3.f * (centerEdge0 - v0) + v0;
+
+            gl_TessLevelInner[0] = projectedLOD(center,      tcs_in[0].faceLOD * heightScale);
+            gl_TessLevelOuter[0] = projectedLOD(centerEdge0, tcs_in[0].edgeLOD * heightScale);
+            gl_TessLevelOuter[1] = projectedLOD(centerEdge1, tcs_in[1].edgeLOD * heightScale);
+            gl_TessLevelOuter[2] = projectedLOD(centerEdge2, tcs_in[2].edgeLOD * heightScale);
         }
     }
 
