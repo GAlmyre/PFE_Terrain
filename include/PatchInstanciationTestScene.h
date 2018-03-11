@@ -14,7 +14,7 @@ class PatchInstanciationTestScene : public Scene {
  public:
   PatchInstanciationTestScene() : Scene(), _camera(new FreeFlyCamera) {}
   void initialize() override {
-
+    _terrain.init();
     loadShaders();
 
     _needShaderReloading = false;

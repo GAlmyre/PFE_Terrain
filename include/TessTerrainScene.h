@@ -7,6 +7,7 @@
 class TessTerrainScene : public Scene {
 public:
   virtual void initialize() {
+    _terrain.init();
     _terrain.setHeightMap(QImage("../data/heightmaps/hm0_1024x1024.png"));
 
     _tessPrg = new QOpenGLShaderProgram();

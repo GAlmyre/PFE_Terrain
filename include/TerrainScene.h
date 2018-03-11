@@ -24,6 +24,7 @@ public:
   TerrainScene() : Scene(), _camera(new FreeFlyCamera) {}
 
   void initialize() override {
+    _terrain.init();
     _mainWindow->loadHeightMap("../data/heightmaps/semnoz.png");
     _terrain.setTexture(QImage("../data/textures/sol.jpg"));
     _colormap = new QOpenGLTexture(QImage("../data/textures/parula_colormap.png").mirrored());

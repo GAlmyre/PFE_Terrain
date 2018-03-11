@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "Terrain.h"
+#include "OpenGL.h"
 
 using namespace surface_mesh;
 using namespace Eigen;
@@ -10,6 +11,13 @@ Terrain::Terrain()
     _width(0), _height(0), _rows(0), _cols(0), _heightScale(50.f)
 {
   //updateBaseMesh();
+}
+
+void Terrain::init() {
+  GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
+
+  f->glGenVertexArrays(1, &_vao);
+  f->glGenBuffers(1, &_vbo);
 }
 
 void Terrain::setHeightMap(const QImage& heightMap)
@@ -44,70 +52,39 @@ float Terrain::getTriEdgeSize() {
 }
 
 void Terrain::draw(QOpenGLShaderProgram &shader){
-  if(_heightMap){
-    _heightMap->bind(0);
-  }
-  if(_texture){
-    _texture->bind(1);
-  }
+  GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
+
+  shader.setUniformValue(shader.uniformLocation("model"), QMatrix4x4());
+  if(_heightMap) _heightMap->bind(0);
+  if(_texture)   _texture->bind(1);
   shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
-  Mesh::draw(shader);
-  if(_heightMap)
-    _heightMap->release();
-  if(_texture)
-    _texture->release();
+
+  f->glBindVertexArray(_vao);
+  f->glDrawArrays(GL_TRIANGLES, 0, _rows * _cols * 6);
+
+  f->glBindVertexArray(0);
+  if(_heightMap) _heightMap->release();
+  if(_texture) _texture->release();
 }
 
 void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
 {
-//  std::cout << "Terrain::drawHardwareTessellation not implemented yet." << std::endl;
-  if(!_initialized)
-    initVAO();
+  GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
 
   // Set uniforms
-  QMatrix4x4 model;
-  model.setToIdentity();
-
-  shader.setUniformValue(shader.uniformLocation("model"), model);
-  if(_heightMap)
-    _heightMap->bind(0);
-  if(_texture)
-    _texture->bind(1);
+  shader.setUniformValue(shader.uniformLocation("model"), QMatrix4x4());
+  if(_heightMap) _heightMap->bind(0);
+  if(_texture)   _texture->bind(1);
   shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
-  _vertexArray.bind();
-  _vertexBuffer->bind();
-  _indexBuffer->bind();
 
-  int vertex_loc = shader.attributeLocation("vtx_position");
-  if(vertex_loc>=0) {
-    shader.setAttributeBuffer(vertex_loc, GL_FLOAT, offsetof(Mesh::Vertex,position), 3, sizeof(Mesh::Vertex));
-    shader.enableAttributeArray(vertex_loc);
-  }
+  f->glBindVertexArray(_vao);
+  f->glDrawArrays(GL_PATCHES, 0, _rows * _cols * 6);
 
-  int normal_loc = shader.attributeLocation("vtx_normal");
-  if(normal_loc>=0) {
-    shader.setAttributeBuffer(normal_loc, GL_FLOAT, offsetof(Mesh::Vertex,normal), 3, sizeof(Mesh::Vertex));
-    shader.enableAttributeArray(normal_loc);
-  }
-
-  int texcoord_loc = shader.attributeLocation("vtx_texcoord");
-  if(texcoord_loc>=0) {
-    shader.setAttributeBuffer(texcoord_loc, GL_FLOAT, offsetof(Mesh::Vertex,texcoord), 2, sizeof(Mesh::Vertex));
-    shader.enableAttributeArray(texcoord_loc);
-  }
-
-  glDrawElements(GL_PATCHES, _indices.size(), GL_UNSIGNED_INT, 0);
-
-  _indexBuffer->release();
-  _vertexBuffer->release();
-  _vertexArray.release();
-
-  if(_heightMap)
-    _heightMap->release();
-  if(_texture)
-    _texture->release();
+  f->glBindVertexArray(0);
+  if(_heightMap) _heightMap->release();
+  if(_texture)   _texture->release();
 }
 void Terrain::drawPatchInstanciation()
 {
@@ -174,7 +151,7 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
       float normPos_i = (float) i / nbCols, normPos_j = (float) j / nbRows;
       v1 = _baseMesh.add_vertex(Vector3f(normPos_i * width, 0, normPos_j * height));
       normals[v1] = Vector3f(normPos_i * width, 0, normPos_j * height);
-      elevation[v1] = getHeight(normPos_i * (width - 1), normPos_j * (height - 1));
+      elevation[v1] = getHeight(normPos_i * (width - 1), normPos_j * (height - 1), false);
       texcoords[v1] = Vector2f(normPos_i, normPos_j);
       verts[cpt++] = v1;
     }
@@ -229,61 +206,17 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
   }
 
   delete[] verts;
-  fillMeshBuffers();
-}
 
-
-void Terrain::fillMeshBuffers()
-{
-  _vertices.clear();
-  _indices.clear();
-  
-  _initialized = false;
-  Surface_mesh::Vertex_property<Vector3f> vertices = _baseMesh.get_vertex_property<Vector3f>("v:point");
-  Surface_mesh::Vertex_property<Vector3f> vnormals = _baseMesh.get_vertex_property<Vector3f>("v:normal");
-  Surface_mesh::Vertex_property<Vector2f> texcoords = _baseMesh.get_vertex_property<Vector2f>("v:texcoords");
-  
-  Surface_mesh::Vertex_iterator vit;
-  
-  Vector3f pos;
-  Vector3f normal;
-  Vector2f tex;
-  for(vit = _baseMesh.vertices_begin(); vit != _baseMesh.vertices_end(); ++vit)
-  {
-    pos = vertices[*vit];
-    normal = vnormals[*vit];
-    if(texcoords)
-      tex = texcoords[*vit];
-    _vertices.push_back(Mesh::Vertex(pos,normal,tex));
-  }
-
-  // face iterator
-  Surface_mesh::Face_iterator fit, fend = _baseMesh.faces_end();
-  // vertex circulator
-  Surface_mesh::Vertex_around_face_circulator fvit, fvend;
-  Surface_mesh::Vertex v0, v1, v2;
-  for (fit = _baseMesh.faces_begin(); fit != fend; ++fit)
-  {
-    fvit = fvend = _baseMesh.vertices(*fit);
-    v0 = *fvit;
-    ++fvit;
-    v2 = *fvit;
-
-    do {
-      v1 = v2;
-      ++fvit;
-      v2 = *fvit;
-      _indices.push_back(v0.idx());
-      _indices.push_back(v1.idx());
-      _indices.push_back(v2.idx());
-    } while (++fvit != fvend);
-  }
+  fillVertexArrayBuffer();
 }
 
 void Terrain::clean() {
-  Mesh::clean();
   if (_heightMap) delete _heightMap;
   if (_texture) delete _texture;
+
+  GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
+  f->glDeleteVertexArrays(1, &_vao);
+  f->glDeleteBuffers(1, &_vbo);
 }
 
 const QImage &Terrain::heightmap() {
@@ -370,7 +303,7 @@ float Terrain::heightScale() {
   return _heightScale;
 }
 
-float Terrain::getHeight(float x, float z) {
+float Terrain::getHeight(float x, float z, bool scaled) {
   int x1 = std::max(std::min(static_cast<int>(x), _width - 2), 0);
   int z1 = std::max(std::min(static_cast<int>(z), _height - 2), 0);
 
@@ -387,12 +320,64 @@ float Terrain::getHeight(float x, float z) {
 
   float P = R1 * (1.f - dz) + R2 * dz;
 
-  return P * _heightScale / 255.f;
+  return scaled ? P * _heightScale / 255.f : P;
 }
 
 bool Terrain::coordsInTerrain(float x, float z) {
   return (x >= 0 && x <= _width - 1 && z >= 0 && z <= _height - 1);
 }
 
-float Terrain::getHeightFromNormalizedCoords(float x, float z) {
+void Terrain::fillVertexArrayBuffer() {
+  std::vector<Vertex> vertices;
+  vertices.reserve(_rows * _cols * 6);
+
+  Surface_mesh::Vertex_property<Vector3f> positions = _baseMesh.get_vertex_property<Vector3f>("v:point");
+  Surface_mesh::Vertex_property<Vector2f> texcoords  = _baseMesh.vertex_property<Vector2f>("v:texcoords");
+
+  // face iterator
+  Surface_mesh::Face_iterator fit, fend = _baseMesh.faces_end();
+  // vertex circulator
+  Surface_mesh::Vertex_around_face_circulator fvit, fvend;
+  Surface_mesh::Vertex v0, v1, v2;
+  for (fit = _baseMesh.faces_begin(); fit != fend; ++fit)
+  {
+    fvit = fvend = _baseMesh.vertices(*fit);
+    v0 = *fvit;
+    ++fvit;
+    v2 = *fvit;
+
+    do {
+      v1 = v2;
+      ++fvit;
+      v2 = *fvit;
+      vertices.emplace_back(positions[v0], texcoords[v0], 0, 0);
+      vertices.emplace_back(positions[v1], texcoords[v1], 0, 0);
+      vertices.emplace_back(positions[v2], texcoords[v2], 0, 0);
+    } while (++fvit != fvend);
+  }
+
+  GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
+
+  f->glBindVertexArray(_vao);
+
+  f->glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+  f->glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+  // Positions
+  f->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *) 0);
+  f->glEnableVertexAttribArray(0);
+
+  // TexCoords
+  f->glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)(offsetof(Vertex, texcoords)));
+  f->glEnableVertexAttribArray(1);
+
+  // Edge LOD
+  f->glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)(offsetof(Vertex, edgeLOD)));
+  f->glEnableVertexAttribArray(2);
+
+  // Face LOD
+  f->glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)(offsetof(Vertex, faceLOD)));
+  f->glEnableVertexAttribArray(3);
+
+  f->glBindVertexArray(0);
 }

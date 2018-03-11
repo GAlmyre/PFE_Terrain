@@ -8,11 +8,12 @@
 
 #include "Mesh.h"
 
-class Terrain : public Mesh
+class Terrain
 {
-
- public:
+public:
   Terrain();
+
+  void init();
 
   void setHeightMap(const QImage& heightmap);
   void setTexture(const QImage&  texture);
@@ -22,8 +23,7 @@ class Terrain : public Mesh
   float getTriEdgeSize();
   float heightScale();
 
-  float getHeight(float x, float z);
-  float getHeightFromNormalizedCoords(float x, float z);
+  float getHeight(float x, float z, bool scaled = true);
   bool coordsInTerrain(float x, float z);
 
   void draw(QOpenGLShaderProgram &shader);
@@ -40,6 +40,20 @@ class Terrain : public Mesh
   void createGrid(float width, float height, unsigned int nbCols, unsigned int nbRows, bool quads);
 
 private:
+  struct Vertex {
+    Vertex(const Eigen::Vector3f &position, const Eigen::Vector2f &texcoords, float edgeLOD, float faceLOD)
+            : position(position), texcoords(texcoords), edgeLOD(edgeLOD), faceLOD(faceLOD) {}
+
+    Eigen::Vector3f position;
+    Eigen::Vector2f texcoords;
+    float edgeLOD;
+    float faceLOD;
+  };
+  std::vector<Vertex> _vertices;
+
+  GLuint _vao;
+  GLuint _vbo;
+
   QOpenGLTexture *_heightMap = nullptr;
   QOpenGLTexture *_texture = nullptr;
   QImage _heightMapImage;
@@ -48,13 +62,13 @@ private:
   bool _quadPatches;
   int _width, _height, _rows, _cols;
   float _heightScale;
-
- private:
-  void fillMeshBuffers();
-  void computeFaceMaxElevation(int x0, int x1, int y0, int y1);
+private:
+  void fillVertexArrayBuffer();
 
   //hardware tessellation
   surface_mesh::Surface_mesh _baseMesh;
+
+
 
   //instanciation of tessellated patches
   /*
