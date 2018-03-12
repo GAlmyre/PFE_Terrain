@@ -333,7 +333,7 @@ float Terrain::getHeight(float x, float z, bool scaled) {
 
   float P = R1 * (1.f - dz) + R2 * dz;
 
-  return scaled ? P * _heightScale / 255.f : P;
+  return (scaled ? P * _heightScale : P) / 255.f;
 }
 
 bool Terrain::coordsInTerrain(float x, float z) {

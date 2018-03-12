@@ -62,12 +62,12 @@ float projectedLOD(vec3 point, float elevation) {
     vec4 clip0 = projection * view * model * vec4(point, 1.f);
     vec4 clip1 = projection * view * model * vec4(point.x, point.y + elevation, point.z, 1.f);
 
-    vec2 ndc0 = clip0.xy / clip0.w * viewport;
-    vec2 ndc1 = clip1.xy / clip1.w * viewport;
+    vec2 ndc0 = clip0.xy / clip0.w * viewport * 0.5;
+    vec2 ndc1 = clip1.xy / clip1.w * viewport * 0.5;
 
     float dist = distance(ndc0, ndc1);
 
-    return clamp(dist / 200.f, 0.f, 64.f);
+    return clamp(dist, 0.f, 64.f);
 }
 
 void main() {
