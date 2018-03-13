@@ -1,4 +1,4 @@
-#version 400 core
+#version 430 core
 
 uniform sampler2D heightmap;
 uniform sampler2D texturemap;

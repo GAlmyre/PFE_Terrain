@@ -19,6 +19,73 @@ void Terrain::init() {
 
   f->glGenVertexArrays(1, &_vao);
   f->glGenBuffers(1, &_vbo);
+
+  generateTessellatedPatches();
+
+  f->glGenBuffers(1, &_instVertexPositionsSSBO);
+  f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instVertexPositionsSSBO);
+  f->glBufferData(GL_SHADER_STORAGE_BUFFER, _instVertexPositions.size()*sizeof(float), _instVertexPositions.data(), GL_STATIC_COPY);
+  f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _instVertexPositionsSSBO);
+
+  f->glGenBuffers(1, &_instVertexParentsSSBO);
+  f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instVertexParentsSSBO);
+  f->glBufferData(GL_SHADER_STORAGE_BUFFER, _instVertexParents.size()*sizeof(float), _instVertexParents.data(), GL_STATIC_COPY);
+  f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, _instVertexParentsSSBO);
+
+  f->glGenBuffers(1, &_instPatchTransformSSBO);
+  f->glGenBuffers(1, &_instPatchTexTransformSSBO);
+  f->glGenBuffers(1, &_instPatchTessLevelsSSBO);
+
+  //initialize patchIDBuffers
+  for(int i=0; i<NB_TESS_LEVELS; ++i){
+    _instPatchIDBuffer[i] = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+    _instPatchIDBuffer[i]->create();
+    _instPatchIDBuffer[i]->bind();
+    _instPatchIDBuffer[i]->setUsagePattern(QOpenGLBuffer::StaticDraw);
+    _instPatchIDBuffer[i]->allocate(sizeof(unsigned int)*1000);
+    _instPatchIDBuffer[i]->release();
+  }
+
+  _instVertexArray.create();
+
+  _nbPatchs = 5;
+  
+  //creation of two patches
+    /*
+      p0-----p1
+      |   _/|
+      | _/  |
+      |/    |
+      p2-----p3
+      p0(0,1)
+      p1(1,1)
+      p2(0,0)
+      p3(1,0)
+    */
+  /*
+    //p0
+    _instPatchTransform.push_back(0);
+    _instPatchTransform.push_back(1);
+    //p2
+    _instPatchTransform.push_back(0);
+    _instPatchTransform.push_back(0);
+    //p1
+    _instPatchTransform.push_back(1);
+    _instPatchTransform.push_back(1);
+
+    //p1
+    _instPatchTransform.push_back(1);
+    _instPatchTransform.push_back(1);
+    //p2
+    _instPatchTransform.push_back(0);
+    _instPatchTransform.push_back(0);
+    //p3
+    _instPatchTransform.push_back(1);
+    _instPatchTransform.push_back(0);
+
+    _needPatchTransformSSBOUpdate = true;
+    //*/
+
 }
 
 void Terrain::setHeightMap(const QImage& heightMap)
@@ -87,9 +154,98 @@ void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
   if(_heightMap) _heightMap->release();
   if(_texture)   _texture->release();
 }
-void Terrain::drawPatchInstanciation()
+void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 {
-  std::cout << "Terrain::drawPatchInstanciation not implemented yet." << std::endl;
+
+  GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
+  // Set uniforms
+  shader.setUniformValue(shader.uniformLocation("model"), QMatrix4x4());
+  if(_heightMap) _heightMap->bind(0);
+  if(_texture)   _texture->bind(1);
+  shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
+  shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
+
+  //compute patch tess levels TODO
+  _instPatchTessLevels.clear();
+  for(unsigned int i=0; i<_nbPatchs; ++i){
+    _instPatchTessLevels.push_back(64);
+  }
+
+  //we fill the patchID buffers
+  for(unsigned int i=0; i<NB_TESS_LEVELS; ++i){
+    _instPatchID[i].clear();
+  }
+  float levels[7] = {1, 2, 4, 8, 16, 32, 64};
+  for(unsigned int i=0; i<_nbPatchs; ++i){
+    float level = _instPatchTessLevels[i];
+    for(unsigned int j=0; j<7; ++j){
+      if(level <= levels[j]){
+	_instPatchID[j].push_back(i);
+	break;
+      }
+    }
+  }
+
+  if(_needPatchTransformSSBOUpdate){
+    f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instPatchTransformSSBO);
+    f->glBufferData(GL_SHADER_STORAGE_BUFFER, _instPatchTransform.size()*sizeof(float), _instPatchTransform.data(), GL_DYNAMIC_COPY);
+    f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, _instPatchTransformSSBO);
+    std::cout << "update patch transform" << std::endl;
+    f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instPatchTexTransformSSBO);
+    f->glBufferData(GL_SHADER_STORAGE_BUFFER, _instPatchTexTransform.size()*sizeof(float), _instPatchTexTransform.data(), GL_DYNAMIC_COPY);
+    f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, _instPatchTexTransformSSBO);
+    _needPatchTransformSSBOUpdate = false;
+  }
+  std::cout << "display" << std::endl;
+
+  //we copy patch tessellation levels to the ssbo
+  f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instPatchTessLevelsSSBO);
+  f->glBufferData(GL_SHADER_STORAGE_BUFFER, _instPatchTessLevels.size()*sizeof(float), _instPatchTessLevels.data(), GL_DYNAMIC_COPY);
+  f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, _instPatchTessLevelsSSBO);
+
+  for(int patchIt = 0; patchIt < NB_TESS_LEVELS; ++patchIt){
+    //std::cout << "test" << std::endl;
+
+    _instVertexArray.bind();
+    _instVertexIDBuffer[patchIt]->bind();
+
+    int vertexID_loc = shader.attributeLocation("vtx_ID");
+    if(vertexID_loc>=0) {
+      f->glVertexAttribIPointer(vertexID_loc, 1, GL_UNSIGNED_INT, 0, 0);
+      shader.enableAttributeArray(vertexID_loc);
+    }
+
+    _instPatchIDBuffer[patchIt]->bind();
+
+    _instPatchIDBuffer[patchIt]->write(0, _instPatchID[patchIt].data(), sizeof(unsigned int) * _instPatchID[patchIt].size());
+
+    int patchID_loc = shader.attributeLocation("patch_ID");
+    if(patchID_loc>=0) {
+      f->glVertexAttribIPointer(patchID_loc, 1, GL_UNSIGNED_INT, 0, 0);
+      shader.enableAttributeArray(patchID_loc);
+    }
+
+    f->glVertexAttribDivisor(vertexID_loc, 0);
+    f->glVertexAttribDivisor(patchID_loc, 1);
+
+    f->glUniform1ui(shader.uniformLocation("patchLevel"), patchIt);
+
+    std::cout << "test test" << _patchNbElements[patchIt] << " " << _instPatchID[patchIt].size() << std::endl;
+
+
+    f->glDrawArraysInstanced(GL_TRIANGLES, 0, _patchNbElements[patchIt], _instPatchID[patchIt].size());
+
+
+
+    if(vertexID_loc)
+      shader.disableAttributeArray(vertexID_loc);
+    _instVertexIDBuffer[patchIt]->release();
+    _instVertexArray.release();
+
+    //std::cout << "test end" << std::endl;
+  }
+  _heightMap->release();
+
 }
 
 //updates the base mesh grid with the correct size according to the height map's size and the patchSize
@@ -98,20 +254,20 @@ void Terrain::updateBaseMesh()
   std::cout << "updateBaseMesh" << std::endl;
   //if we already loaded a height map
   if(_heightMap)
-  {
-    std::cout << "updateBaseMesh image loaded" << std::endl;
-    _width = _heightMap->width();
-    _height = _heightMap->height();
-    _cols = _width / _pixelsPerPatch;
-    _rows = _height / _pixelsPerPatch;
+    {
+      std::cout << "updateBaseMesh image loaded" << std::endl;
+      _width = _heightMap->width();
+      _height = _heightMap->height();
+      _cols = _width / _pixelsPerPatch;
+      _rows = _height / _pixelsPerPatch;
 
-    if(_width % _pixelsPerPatch)
-      _cols++;
-    if(_height % _pixelsPerPatch)
-      _rows++;
+      if(_width % _pixelsPerPatch)
+	_cols++;
+      if(_height % _pixelsPerPatch)
+	_rows++;
 
-    createGrid(_width,_height, _cols, _rows, false);
-  } else {
+      createGrid(_width,_height, _cols, _rows, false);
+    } else {
     //for debug purpose only we create a grid without height map
     //should clear the mesh instead
     _width = 5;
@@ -130,6 +286,8 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
   Surface_mesh::Face_property<float> maxElevation = _baseMesh.face_property<float>("f:maxElevation");
 
   _baseMesh.clear();
+  _instPatchTransform.clear();
+  _instPatchTexTransform.clear();
 
   int nbVertices = (nbCols+1)*(nbRows+1);
   int nbFaces = nbCols*nbRows;
@@ -138,6 +296,9 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
     nbEdges += nbFaces;//we add one edge per quad to divide it in two triangles
     nbFaces *= 2;
   }
+
+  _nbPatchs = nbFaces;
+  std::cout << "nb faces : " << nbFaces << std::endl;
 
   _baseMesh.reserve(nbVertices, nbEdges, nbFaces);
 
@@ -176,13 +337,46 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
     i3 = i1+nbRows+1;  i4 = i3+1;
     v1 = verts[i1];    v2 = verts[i2];
     v3 = verts[i3];    v4 = verts[i4];
+    
     if(quads){
       _baseMesh.add_quad(v1, v3, v4, v2);
     } else {
       //split the quad into two triangles
       Surface_mesh::Face f0 = _baseMesh.add_triangle(v1, v3, v2);
       Surface_mesh::Face f1 = _baseMesh.add_triangle(v2, v3, v4);
+      Vector3f pos1, pos2, pos3, pos4;
+      Vector2f t1, t2, t3, t4;
+      pos1 = points[v1]; pos2 = points[v2]; pos3 = points[v3]; pos4 = points[v4];
+      t1 = texcoords[v1]; t2 = texcoords[v2]; t3 = texcoords[v3]; t4 = texcoords[v4];
+      //*
+      _instPatchTransform.push_back(pos1.x());
+      _instPatchTransform.push_back(pos1.z());
+      _instPatchTransform.push_back(pos3.x());
+      _instPatchTransform.push_back(pos3.z());
+      _instPatchTransform.push_back(pos2.x());
+      _instPatchTransform.push_back(pos2.z());
 
+      _instPatchTransform.push_back(pos2.x());
+      _instPatchTransform.push_back(pos2.z());
+      _instPatchTransform.push_back(pos3.x());
+      _instPatchTransform.push_back(pos3.z());
+      _instPatchTransform.push_back(pos4.x());
+      _instPatchTransform.push_back(pos4.z());
+
+      _instPatchTexTransform.push_back(t1.x());
+      _instPatchTexTransform.push_back(t1.y());
+      _instPatchTexTransform.push_back(t3.x());
+      _instPatchTexTransform.push_back(t3.y());
+      _instPatchTexTransform.push_back(t2.x());
+      _instPatchTexTransform.push_back(t2.y());
+
+      _instPatchTexTransform.push_back(t2.x());
+      _instPatchTexTransform.push_back(t2.y());
+      _instPatchTexTransform.push_back(t3.x());
+      _instPatchTexTransform.push_back(t3.y());
+      _instPatchTexTransform.push_back(t4.x());
+      _instPatchTexTransform.push_back(t4.y());
+      //*/
       /* Here, we will compute the lod based on the heightmap elevation in the triangles */
       Vector3f p1 = points[v1]; p1 += getHeight(p1.x(), p1.z(), false) * Vector3f::UnitY();
       Vector3f p2 = points[v2]; p2 += getHeight(p2.x(), p2.z(), false) * Vector3f::UnitY();
@@ -221,6 +415,161 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
   delete[] verts;
 
   fillVertexArrayBuffer();
+
+  _needPatchTransformSSBOUpdate = true;
+
+  
+}
+
+void Terrain::generateTessellatedPatches(){
+
+  Surface_mesh mesh;
+  //mesh.reserve(1000,1000,1000);
+
+  std::cout << "generate tess patches begin" << std::endl;
+  // ##### Properties #####
+  Surface_mesh::Vertex_property<Vector3f> point = mesh.get_vertex_property<Vector3f>("v:point");
+  //tessellation level
+  Surface_mesh::Vertex_property<unsigned int> vertexTessLevel = mesh.vertex_property<unsigned int>("v:tessLevel");
+  Surface_mesh::Edge_property<unsigned int> edgeTessLevel = mesh.edge_property<unsigned int>("e:tessLevel");
+  Surface_mesh::Face_property<unsigned int> faceTessLevel = mesh.face_property<unsigned int>("f:tessLevel");
+  //vertex child
+  Surface_mesh::Vertex_property<Surface_mesh::Vertex> vertex_child = mesh.vertex_property<Surface_mesh::Vertex>("v:child");
+  //edge child
+  Surface_mesh::Edge_property<Surface_mesh::Vertex> edge_child = mesh.edge_property<Surface_mesh::Vertex>("e:child");
+  //vertex parent1
+  Surface_mesh::Vertex_property<Surface_mesh::Vertex> vertex_parent1 = mesh.vertex_property<Surface_mesh::Vertex>("v:parent1");
+  //vertex parent2
+  Surface_mesh::Vertex_property<Surface_mesh::Vertex> vertex_parent2 = mesh.vertex_property<Surface_mesh::Vertex>("v:parent2");
+
+  // ##### Tessellation levels creation loop #####
+
+  for(int i=0; i<NB_TESS_LEVELS; ++i){
+    //creation of the first level
+    if(i==0){
+      Surface_mesh::Vertex v1, v2, v3;
+      v1 = mesh.add_vertex(Vector3f(1, 0, 0));
+      v2 = mesh.add_vertex(Vector3f(0, 1, 0));
+      v3 = mesh.add_vertex(Vector3f(0, 0, 1));
+      Surface_mesh::Face f = mesh.add_triangle(v1, v2, v3);
+
+      vertexTessLevel[v1] = vertexTessLevel[v2] = vertexTessLevel[v3] = faceTessLevel[f] = i;
+      for(Surface_mesh::Halfedge h : mesh.halfedges(f)){
+	Surface_mesh::Edge e = mesh.edge(h);
+	edgeTessLevel[e] = i;
+      }
+    }
+    //creation of every other levels
+    else{
+      //we make a copy of each vertex of the previous level and mark it as its child
+      for(Surface_mesh::Vertex v : mesh.vertices()){
+	if(vertexTessLevel[v] == i-1){
+	  Surface_mesh::Vertex vChild = mesh.add_vertex(point[v]);
+	  vertex_child[v] = vChild;
+
+	  vertexTessLevel[vChild] = i;
+	}
+      }
+
+      //we create a vertex at the middle of each edge of the previous level and mark it as its child
+      for(Surface_mesh::Edge e : mesh.edges()){
+	if(edgeTessLevel[e] == i-1){
+	  Surface_mesh::Vertex ev0, ev1;
+	  ev0 = mesh.vertex(e, 0);
+	  ev1 = mesh.vertex(e, 1);
+	  Surface_mesh::Vertex v = mesh.add_vertex((point[ev0] + point[ev1])/2);
+	  edge_child[e] = v;
+	  vertex_parent1[v] = ev0;
+	  vertex_parent2[v] = ev1;
+
+	  vertexTessLevel[v] = i;
+	}
+      }
+
+      //we create 4 triangles for each
+      for(Surface_mesh::Face f : mesh.faces()){
+	if(faceTessLevel[f] == i-1){
+	  Surface_mesh::Vertex v0, v1, v2, ev0, ev1, ev2;
+	  Surface_mesh::Halfedge h = mesh.halfedge(f);
+	  v0 = vertex_child[mesh.to_vertex(h)];
+	  ev0 = edge_child[mesh.edge(h)];
+	  h = mesh.next_halfedge(h);
+	  v1 = vertex_child[mesh.to_vertex(h)];
+	  ev1 = edge_child[mesh.edge(h)];
+	  h = mesh.next_halfedge(h);
+	  v2 = vertex_child[mesh.to_vertex(h)];
+	  ev2 = edge_child[mesh.edge(h)];
+
+	  Surface_mesh::Face f0, f1, f2, f3;
+	  f0 = mesh.add_triangle(ev0, v0, ev1);
+	  f1 = mesh.add_triangle(ev1, v1, ev2);
+	  f2 = mesh.add_triangle(ev2, v2, ev0);
+	  f3 = mesh.add_triangle(ev0, ev1, ev2);
+
+	  faceTessLevel[f0] = i;
+	  faceTessLevel[f1] = i;
+	  faceTessLevel[f2] = i;
+	  faceTessLevel[f3] = i;
+
+	  for(Surface_mesh::Halfedge h : mesh.halfedges(f0)){
+	    Surface_mesh::Edge e = mesh.edge(h);
+	    edgeTessLevel[e] = i;
+	  }
+
+	  for(Surface_mesh::Halfedge h : mesh.halfedges(f1)){
+	    Surface_mesh::Edge e = mesh.edge(h);
+	    edgeTessLevel[e] = i;
+	  }
+
+	  for(Surface_mesh::Halfedge h : mesh.halfedges(f2)){
+	    Surface_mesh::Edge e = mesh.edge(h);
+	    edgeTessLevel[e] = i;
+	  }
+
+	  for(Surface_mesh::Halfedge h : mesh.halfedges(f3)){
+	    Surface_mesh::Edge e = mesh.edge(h);
+	    edgeTessLevel[e] = i;
+	  }
+	}
+      }
+    }
+  }
+  
+  // ##### fill the tess level vertexIDBuffer with vertices indices
+  std::vector<unsigned int> vertexID[NB_TESS_LEVELS];
+  for(Surface_mesh::Face f : mesh.faces()){
+    unsigned int level = faceTessLevel[f];
+    for(Surface_mesh::Vertex v : mesh.vertices(f)){
+      vertexID[level].push_back(v.idx());
+    }
+  }
+
+  for(int i=0; i<NB_TESS_LEVELS; ++i){
+    _patchNbElements.push_back(vertexID[i].size());
+
+    _instVertexIDBuffer[i] = new QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+    _instVertexIDBuffer[i]->create();
+    _instVertexIDBuffer[i]->bind();
+    _instVertexIDBuffer[i]->setUsagePattern(QOpenGLBuffer::StaticDraw);
+    _instVertexIDBuffer[i]->allocate(vertexID[i].data(), sizeof(unsigned int)*vertexID[i].size());
+    _instVertexIDBuffer[i]->release();
+  }
+
+  // ##### fill the vertexPosition and vertexParents vectors
+  for(Surface_mesh::Vertex v : mesh.vertices()){
+    Vector3f p = point[v];
+    _instVertexPositions.push_back(p.x());
+    _instVertexPositions.push_back(p.y());
+    _instVertexPositions.push_back(p.z());
+    //TODO 4th value is border value
+    _instVertexPositions.push_back(0);
+
+    //for parents  0 = no parent (idx = -1)   all idx are shifted by one to fit in an unsigned int
+    _instVertexParents.push_back(vertex_parent1[v].idx()+1);
+    _instVertexParents.push_back(vertex_parent2[v].idx()+1);
+  }
+
+  std::cout << "generate tess patches end" << std::endl;
 }
 
 void Terrain::clean() {
@@ -230,6 +579,8 @@ void Terrain::clean() {
   GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
   f->glDeleteVertexArrays(1, &_vao);
   f->glDeleteBuffers(1, &_vbo);
+
+  //TODO add delete for instanciation
 }
 
 const QImage &Terrain::heightmap() {
@@ -353,36 +704,36 @@ void Terrain::fillVertexArrayBuffer() {
   // vertex circulator
   Surface_mesh::Vertex v0, v1, v2;
   for (fit = _baseMesh.faces_begin(); fit != fend; ++fit)
-  {
-    float faceLOD = maxElevation[*fit];
+    {
+      float faceLOD = maxElevation[*fit];
 
-    Surface_mesh::Halfedge he0 = _baseMesh.halfedge(*fit);
-    Surface_mesh::Halfedge he1 = _baseMesh.next_halfedge(he0);
-    Surface_mesh::Halfedge he2 = _baseMesh.next_halfedge(he1);
+      Surface_mesh::Halfedge he0 = _baseMesh.halfedge(*fit);
+      Surface_mesh::Halfedge he1 = _baseMesh.next_halfedge(he0);
+      Surface_mesh::Halfedge he2 = _baseMesh.next_halfedge(he1);
 
-    v0 = _baseMesh.from_vertex(he0);
-    v1 = _baseMesh.from_vertex(he1);
-    v2 = _baseMesh.from_vertex(he2);
+      v0 = _baseMesh.from_vertex(he0);
+      v1 = _baseMesh.from_vertex(he1);
+      v2 = _baseMesh.from_vertex(he2);
 
-    Surface_mesh::Face oppositef0 = _baseMesh.face(_baseMesh.opposite_halfedge(he1));
-    Surface_mesh::Face oppositef1 = _baseMesh.face(_baseMesh.opposite_halfedge(he2));
-    Surface_mesh::Face oppositef2 = _baseMesh.face(_baseMesh.opposite_halfedge(he0));
+      Surface_mesh::Face oppositef0 = _baseMesh.face(_baseMesh.opposite_halfedge(he1));
+      Surface_mesh::Face oppositef1 = _baseMesh.face(_baseMesh.opposite_halfedge(he2));
+      Surface_mesh::Face oppositef2 = _baseMesh.face(_baseMesh.opposite_halfedge(he0));
 
-    float edgeLOD[3] = { faceLOD, faceLOD, faceLOD };
-    if (oppositef0.is_valid()) {
-      edgeLOD[0] = (edgeLOD[0] + maxElevation[oppositef0]) / 2.f;
+      float edgeLOD[3] = { faceLOD, faceLOD, faceLOD };
+      if (oppositef0.is_valid()) {
+	edgeLOD[0] = (edgeLOD[0] + maxElevation[oppositef0]) / 2.f;
+      }
+      if (oppositef1.is_valid()) {
+	edgeLOD[1] = (edgeLOD[1] + maxElevation[oppositef1]) / 2.f;
+      }
+      if (oppositef2.is_valid()) {
+	edgeLOD[2] = (edgeLOD[2] + maxElevation[oppositef2]) / 2.f;
+      }
+
+      vertices.emplace_back(positions[v0], texcoords[v0], edgeLOD[0], faceLOD);
+      vertices.emplace_back(positions[v1], texcoords[v1], edgeLOD[1], faceLOD);
+      vertices.emplace_back(positions[v2], texcoords[v2], edgeLOD[2], faceLOD);
     }
-    if (oppositef1.is_valid()) {
-      edgeLOD[1] = (edgeLOD[1] + maxElevation[oppositef1]) / 2.f;
-    }
-    if (oppositef2.is_valid()) {
-      edgeLOD[2] = (edgeLOD[2] + maxElevation[oppositef2]) / 2.f;
-    }
-
-    vertices.emplace_back(positions[v0], texcoords[v0], edgeLOD[0], faceLOD);
-    vertices.emplace_back(positions[v1], texcoords[v1], edgeLOD[1], faceLOD);
-    vertices.emplace_back(positions[v2], texcoords[v2], edgeLOD[2], faceLOD);
-  }
 
   GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
 

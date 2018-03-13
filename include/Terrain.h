@@ -8,6 +8,8 @@
 
 #include "Mesh.h"
 
+#define NB_TESS_LEVELS 7
+
 class Terrain
 {
 public:
@@ -28,7 +30,7 @@ public:
 
   void draw(QOpenGLShaderProgram &shader);
   void drawHardwareTessellation(QOpenGLShaderProgram &shader);
-  void drawPatchInstanciation();
+  void drawPatchInstanciation(QOpenGLShaderProgram &shader);
 
   bool intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float &t);
 
@@ -38,7 +40,8 @@ public:
   void clean();
 
   void createGrid(float width, float height, unsigned int nbCols, unsigned int nbRows, bool quads);
-
+  void generateTessellatedPatches();
+  
 private:
   struct Vertex {
     Vertex(const Eigen::Vector3f &position, const Eigen::Vector2f &texcoords, float edgeLOD, float faceLOD)
@@ -50,10 +53,10 @@ private:
     float faceLOD;
   };
   std::vector<Vertex> _vertices;
-
+  
   GLuint _vao;
   GLuint _vbo;
-
+  
   QOpenGLTexture *_heightMap = nullptr;
   QOpenGLTexture *_texture = nullptr;
   QImage _heightMapImage;
@@ -62,6 +65,32 @@ private:
   bool _quadPatches;
   int _width, _height, _rows, _cols;
   float _heightScale;
+
+
+  //##### instanciation #####
+
+  unsigned int _nbPatchs = 0;
+  
+  std::vector<unsigned int> _patchNbElements;//filled
+  std::vector<float> _instPatchTessLevels;
+  std::vector<float> _instVertexPositions;//filled
+  std::vector<unsigned int> _instVertexParents;//filled
+  std::vector<float> _instPatchTransform;  //filled
+  std::vector<float> _instPatchTexTransform; //filled
+
+  GLuint _instVertexPositionsSSBO;//init filled
+  GLuint _instVertexParentsSSBO;//init filled
+  GLuint _instPatchTransformSSBO;//init filled
+  GLuint _instPatchTexTransformSSBO;//init filled
+  GLuint _instPatchTessLevelsSSBO;//init 
+
+  bool _needPatchTransformSSBOUpdate;
+
+  QOpenGLVertexArrayObject _instVertexArray;
+  QOpenGLBuffer * _instVertexIDBuffer[NB_TESS_LEVELS]; //created and filled
+  std::vector<unsigned int> _instPatchID[NB_TESS_LEVELS]; //created filled
+  QOpenGLBuffer * _instPatchIDBuffer[NB_TESS_LEVELS];//created and filled
+  
 private:
   void fillVertexArrayBuffer();
 
