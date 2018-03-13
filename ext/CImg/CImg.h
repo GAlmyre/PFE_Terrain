@@ -610,7 +610,9 @@ extern "C" {
 #define _cimg_redefine_PI
 #endif
 
-// Define 'cimg_library' namespace suffix.
+// Define '
+//
+// ' namespace suffix.
 //
 // You may want to add a suffix to the 'cimg_library' namespace, for instance if you need to work
 // with several versions of the library at the same time.

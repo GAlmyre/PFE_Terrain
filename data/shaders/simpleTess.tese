@@ -34,6 +34,8 @@ void main(void){
                     (gl_TessCoord.z * gl_in[2].gl_Position) +
                     vec4(0.f, displacement, 0.f, 0.f);
 
+    // Compute normal
+
     tes_out.distance = length((view * model * position).xyz);
     tes_out.texcoord = texcoord;
     gl_Position = projection * view * model * position;

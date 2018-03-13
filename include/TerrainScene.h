@@ -569,6 +569,17 @@ public:
   }
 
   virtual void connectToMainWindow(MainWindow *mw){
+    QObject::connect(mw, static_cast<void (MainWindow::*)(const QString&)>(&MainWindow::loadedHeightMap),
+                     [this, mw](const QString& filename) {
+                       try {
+                         _terrain.setHeightMap(filename);
+                         _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
+                         _camera->setSpeed(_defaultCamSpeed);
+                       } catch (const std::exception &e) {
+                         QMessageBox::about(mw, "Error while loading heightmap", "Unable to load the image file located at " + filename);
+                         return;
+                       }
+                     });
     QObject::connect(mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedHeightMap),
 		     [this](const QImage& im) {
 		       _terrain.setHeightMap(im);
@@ -716,7 +727,7 @@ private:
   CameraMode _cameraMode = CameraMode::FREE_FLY;
   TessellationMethod _tessellationMethod = TessellationMethod::HARDWARE;
   TessellationMode _tessellationMode = TessellationMode::ADAPTATIVE_FROM_POV;
-  AdaptativeMode _adaptativeTessellationMode = AdaptativeMode::VIEWSPACE;
+  AdaptativeMode _adaptativeTessellationMode = AdaptativeMode::CONTENT;
 
   float _defaultCamSpeed;
   bool _needShaderReloading;

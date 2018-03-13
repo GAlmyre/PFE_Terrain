@@ -6,6 +6,7 @@
 #include <Viewer.h>
 #include <iostream>
 #include <sstream>
+#include <Eigen/Dense>
 
 #include "CImg/CImg.h"
 
@@ -105,45 +106,7 @@ void MainWindow::loadHeightMap(const QString &filename) {
   QFileInfo fileInfo(filename);
   QString fileExtension = fileInfo.suffix();
 
-  CImg<float> image;
-  try {
-    image.assign(filename.toStdString().c_str());
-  } catch (const CImgIOException &e) {
-    QMessageBox::about(this, "Error while loading heightmap", "Unable to load the image file located at " + filename);
-    return;
-  }
-
-//  image.print();
-
-  //image.normalize(0, 65535);
-  cimg_library::CImgList<float> l = image.get_gradient("xy", 2);
-//  l[0].print();
-//  l[1].print();
-
-  /* If image is 16-bits we add 2^16/2, if 8 bits we add 2^8/2 */
-  l[0] /= 8.f;
-  l[1] /= 8.f;
-  if (image.max() > 255.f) {
-    l[0] += 32768;
-    l[1] += 32768;
-  } else {
-    l[0] += 128;
-    l[1] += 128;
-  }
-
-  std::cout << "l min max : " << l[0].min()
-            << " " << l[0].max()
-            << " " << l[1].min()
-            << " " << l[1].max()<< std::endl;
-
-  image.append(l[0], 'c');
-  image.append(l[1], 'c');
-
-  image.save_png("../data/heightmaps/tmp.png");
-  QImage heightmap("../data/heightmaps/tmp.png");
-  std::cout << "opened heightmap \"" << fileInfo.fileName().toStdString() << "\"\n";
-
-  emit loadedHeightMap(heightmap);
+  emit loadedHeightMap(filename);
 }
 
 
