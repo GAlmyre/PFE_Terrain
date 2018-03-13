@@ -42,7 +42,7 @@ void Terrain::init() {
     _instPatchIDBuffer[i]->create();
     _instPatchIDBuffer[i]->bind();
     _instPatchIDBuffer[i]->setUsagePattern(QOpenGLBuffer::StaticDraw);
-    _instPatchIDBuffer[i]->allocate(sizeof(unsigned int)*1000);
+    _instPatchIDBuffer[i]->allocate(sizeof(unsigned int)*1);
     _instPatchIDBuffer[i]->release();
   }
 
@@ -217,7 +217,9 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 
     _instPatchIDBuffer[patchIt]->bind();
 
-    _instPatchIDBuffer[patchIt]->write(0, _instPatchID[patchIt].data(), sizeof(unsigned int) * _instPatchID[patchIt].size());
+    //_instPatchIDBuffer[patchIt]->write(0, _instPatchID[patchIt].data(), sizeof(unsigned int) * _instPatchID[patchIt].size());
+    //TODO check if it is more expensive to use allocate than write : if so use allocate after each createGrid call to change the allocation according to the number of patchs
+    _instPatchIDBuffer[patchIt]->allocate(_instPatchID[patchIt].data(), sizeof(unsigned int)*_instPatchID[patchIt].size());
 
     int patchID_loc = shader.attributeLocation("patch_ID");
     if(patchID_loc>=0) {
