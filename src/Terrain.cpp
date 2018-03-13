@@ -1,4 +1,5 @@
 #include <iostream>
+#include <limits>
 
 #include "Terrain.h"
 #include "OpenGL.h"
@@ -6,6 +7,8 @@
 
 using namespace surface_mesh;
 using namespace Eigen;
+
+using namespace cimg_library;
 
 Terrain::Terrain()
   : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr),
@@ -86,17 +89,73 @@ void Terrain::init() {
     _needPatchTransformSSBOUpdate = true;
     //*/
 
+  f->glGenTextures(1, &_heightMapGL);
 }
 
-void Terrain::setHeightMap(const QImage& heightMap)
-{
-  _heightMapImage = heightMap.mirrored();
+void Terrain::setHeightMap(const QString &filename) {
+  _heightMapCImg.assign(filename.toStdString().c_str());
 
-  _heightMap = new QOpenGLTexture(_heightMapImage);
+  // Manually calculate gradient
+  CImg<float> gradX(_heightMapCImg.width(), _heightMapCImg.height(), 1, 1);
+  CImg<float> gradZ(_heightMapCImg.width(), _heightMapCImg.height(), 1, 1);
+
+  bool is16bits = _heightMapCImg.max() > 255.f;
+  float ushortMax = std::numeric_limits<unsigned short>::max();
+  float ucharMax = std::numeric_limits<unsigned char>::max();
+  float max = is16bits ? ushortMax : ucharMax;
+  float half = (max + 1.f) / 2.f;
+
+  CImg_3x3(I,float);
+  cimg_for3x3(_heightMapCImg,x,y,0,0,I,float) {
+      gradX(x, y, 0) = (Ipc - Inc) / 2.f + half;
+      gradZ(x, y, 0) = (Icp - Icn) / 2.f + half;
+    }
+
+//  cimg_library::CImgList<unsigned short> l = _heightMapCImg.get_gradient("xy", 3);
+//  l[0] /= 8.f;
+//  l[1] /= 8.f;
+//  if (is16bits) {
+//    l[0] += half;
+//    l[1] += half;
+//  } else {
+//    l[0] += half;
+//    l[1] += half;
+//  }
+
+  _heightMapCImg.append(gradX, 'c');
+  _heightMapCImg.append(gradZ, 'c');
+
+  // Heightmap normalization to 16 bits
+  if (!is16bits) _heightMapCImg = _heightMapCImg / ucharMax * ushortMax;
+  // Set openGL orientation convention
+  _heightMapCImg.mirror('y');
+
+  CImg<unsigned short> glHeightMap(_heightMapCImg);
+  // Interleave Data
+  glHeightMap.permute_axes("cxyz");
+
+  GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
+
+  f->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+  _heightMap = new QOpenGLTexture(QOpenGLTexture::Target2D);
+  _heightMap->setSize(_heightMapCImg.width(), _heightMapCImg.height());
+  _heightMap->setMipLevels(_heightMap->maximumMipLevels());
+  _heightMap->setFormat(QOpenGLTexture::RGB16_UNorm);
+  _heightMap->allocateStorage(QOpenGLTexture::RGB, QOpenGLTexture::UInt16);
+  _heightMap->setData(QOpenGLTexture::RGB, QOpenGLTexture::UInt16, glHeightMap.data());
+
   _heightMap->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
   _heightMap->setMagnificationFilter(QOpenGLTexture::Linear);
   _heightMap->setWrapMode(QOpenGLTexture::DirectionS, QOpenGLTexture::ClampToEdge);
   _heightMap->setWrapMode(QOpenGLTexture::DirectionT, QOpenGLTexture::ClampToEdge);
+
+  f->glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+  // Normalize heightmap to [0, 1]
+  _heightMapCImg /= ushortMax;
+
+  _heightMapCImg.print("Normalized Heightmap");
 
   updateBaseMesh();
 }
@@ -114,7 +173,6 @@ Eigen::Vector2f Terrain::getSize() {
   return Eigen::Vector2f(_width, _height);
 }
 
-
 float Terrain::getTriEdgeSize() {
   return (float) _width / (float) _cols;
 }
@@ -124,6 +182,8 @@ void Terrain::draw(QOpenGLShaderProgram &shader){
 
   shader.setUniformValue(shader.uniformLocation("model"), QMatrix4x4());
   if(_heightMap) _heightMap->bind(0);
+//  f->glActiveTexture(GL_TEXTURE0);
+//  f->glBindTexture(GL_TEXTURE_2D, _heightMapGL);
   if(_texture)   _texture->bind(1);
   shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
@@ -143,6 +203,8 @@ void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
   // Set uniforms
   shader.setUniformValue(shader.uniformLocation("model"), QMatrix4x4());
   if(_heightMap) _heightMap->bind(0);
+//  f->glActiveTexture(GL_TEXTURE0);
+//  f->glBindTexture(GL_TEXTURE_2D, _heightMapGL);
   if(_texture)   _texture->bind(1);
   shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
@@ -154,9 +216,9 @@ void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
   if(_heightMap) _heightMap->release();
   if(_texture)   _texture->release();
 }
+
 void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 {
-
   GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
   // Set uniforms
   shader.setUniformValue(shader.uniformLocation("model"), QMatrix4x4());
@@ -253,23 +315,22 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 //updates the base mesh grid with the correct size according to the height map's size and the patchSize
 void Terrain::updateBaseMesh()
 {
-  std::cout << "updateBaseMesh" << std::endl;
   //if we already loaded a height map
-  if(_heightMap)
-    {
-      std::cout << "updateBaseMesh image loaded" << std::endl;
-      _width = _heightMap->width();
-      _height = _heightMap->height();
-      _cols = _width / _pixelsPerPatch;
-      _rows = _height / _pixelsPerPatch;
 
-      if(_width % _pixelsPerPatch)
-	_cols++;
-      if(_height % _pixelsPerPatch)
-	_rows++;
+  if(!_heightMapCImg.is_empty())
+  {
+    _width = _heightMapCImg.width();
+    _height = _heightMapCImg.height();
+    _cols = _width / _pixelsPerPatch;
+    _rows = _height / _pixelsPerPatch;
 
-      createGrid(_width,_height, _cols, _rows, false);
-    } else {
+    if(_width % _pixelsPerPatch)
+      _cols++;
+    if(_height % _pixelsPerPatch)
+      _rows++;
+
+    createGrid(_width,_height, _cols, _rows, false);
+  } else {
     //for debug purpose only we create a grid without height map
     //should clear the mesh instead
     _width = 5;
@@ -583,6 +644,8 @@ void Terrain::clean() {
   f->glDeleteBuffers(1, &_vbo);
 
   //TODO add delete for instanciation
+
+  f->glDeleteTextures(1, &_heightMapGL);
 }
 
 const QImage &Terrain::heightmap() {
@@ -670,6 +733,9 @@ float Terrain::heightScale() {
 }
 
 float Terrain::getHeight(float x, float z, bool scaled) {
+  float val = _heightMapCImg.linear_atXY(x, z);
+  return scaled ? val * _heightScale : val;
+
   int x1 = std::max(std::min(static_cast<int>(x), _width - 2), 0);
   int z1 = std::max(std::min(static_cast<int>(z), _height - 2), 0);
 

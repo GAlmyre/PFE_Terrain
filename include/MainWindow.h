@@ -56,6 +56,7 @@ private slots:
 
  signals:
   void loadedHeightMap(const QImage&);
+  void loadedHeightMap(const QString&);
   void loadedTexture(const QImage&);
 };
 

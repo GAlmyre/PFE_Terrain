@@ -42,11 +42,8 @@ const int TEXTURING_MODE_TESSLEVEL = 5;
 
 vec3 normalFromTexcoords(vec2 uv, float elevation){
   vec2 normals = texture(heightmap, uv).yz;
-  normals = normals - 0.5;
-  normals *= 8;
-  vec3 u = normalize(vec3(1., elevation*normals.x, 0.));
-  vec3 v = normalize(vec3(0., elevation*normals.y, 1.));
-  return normalize(cross(v, u));
+  normals = (normals - 0.5) * 2.f;
+  return normalize(vec3(elevation * normals.x, 2.f, elevation * normals.y));
 }
 
 vec3 shade(vec3 N, vec3 L, vec3 V,
@@ -106,7 +103,7 @@ void main(void) {
       out_color = vec4(val, val, val, 1.);
       break;
     case TEXTURING_MODE_NORMALS:
-      vec3 n = normalFromTexcoords(fs_in.texcoord, heightScale/10. );
+      vec3 n = normalFromTexcoords(fs_in.texcoord, heightScale);
       n = (n+1)/2;
       out_color = vec4(n, 1.);
       break;

@@ -3,7 +3,8 @@
 
 #include <QOpenGLShaderProgram>
 #include <QImage>
-
+#define cimg_display 0
+#include "CImg/CImg.h"
 #include "surface_mesh/surface_mesh.h"
 
 #include "Mesh.h"
@@ -17,7 +18,8 @@ public:
 
   void init();
 
-  void setHeightMap(const QImage& heightmap);
+  void setHeightMap(const QString &filename);
+  //void setHeightMap(const QImage& heightmap);
   void setTexture(const QImage&  texture);
   void setHeightScale(float heightScale);
 
@@ -60,6 +62,9 @@ private:
   QOpenGLTexture *_heightMap = nullptr;
   QOpenGLTexture *_texture = nullptr;
   QImage _heightMapImage;
+
+  cimg_library::CImg<float> _heightMapCImg;
+  GLuint _heightMapGL;
 
   unsigned int _pixelsPerPatch;
   bool _quadPatches;
