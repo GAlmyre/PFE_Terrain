@@ -104,6 +104,13 @@ public:
       _needShaderReloading = false;
     }
 
+    GLint available;
+    _f->glGetQueryObjectiv(_primGenQuery, GL_QUERY_RESULT_AVAILABLE, &available);
+    if (available) {
+      _f->glGetQueryObjectuiv(_primGenQuery, GL_QUERY_RESULT, &_primGens);
+      std::cout << " Triangles : " << _primGens << std::endl;
+    }
+
     _f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     /* Shader Program selection */
@@ -170,6 +177,8 @@ public:
       currentPrg->setUniformValue(currentPrg->uniformLocation("v_color"), QVector3D(1,0,0));
       currentPrg->setUniformValue(currentPrg->uniformLocation("texturing_mode"), _texMode);
 
+      _f->glBeginQuery(GL_PRIMITIVES_GENERATED, _primGenQuery);
+
       switch(_tessellationMethod) {
         case NO_TESSELLATION:
           _terrain.draw(*currentPrg);
@@ -181,6 +190,8 @@ public:
           _terrain.drawPatchInstanciation(*currentPrg);
           break;
       }
+
+      _f->glEndQuery(GL_PRIMITIVES_GENERATED);
     }
 
     if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
@@ -789,6 +800,7 @@ private:
   MainWindow *_mainWindow;
 
   GLuint _primGenQuery;
+  unsigned int _primGens = 0;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H
