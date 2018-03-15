@@ -40,11 +40,11 @@ const int TEXTURING_MODE_TESSLEVEL = 5;
 
 #define M_PI 3.1415926535897932384626433832795
 
-vec3 normalFromTexcoords(vec2 uv, float elevation){
-  vec2 normals = texture(heightmap, uv).yz;
-  normals = (normals - 0.5) * 2.f;
-  return normalize(vec3(elevation * normals.x, 2.f, elevation * normals.y));
-}
+//vec3 normalFromTexcoords(vec2 uv, float elevation){
+//  vec2 normals = texture(heightmap, uv).yz;
+//  normals = (normals - 0.5) * 2.f;
+//  return normalize(vec3(elevation * normals.x, 2.f, elevation * normals.y));
+//}
 
 vec3 shade(vec3 N, vec3 L, vec3 V,
            vec3 color, float Ka, float Kd, float Ks,
@@ -63,6 +63,12 @@ vec3 shade(vec3 N, vec3 L, vec3 V,
     }
 
     return final_color;
+}
+
+vec3 normalFromTexcoords(vec2 uv, float elevation){
+  vec2 normals = texture(heightmap, uv).yz;
+  normals = (normals - 0.5) * 2.f;
+  return normalize(vec3(elevation * normals.x, 2.f, elevation * normals.y));
 }
 
 void main(void) {

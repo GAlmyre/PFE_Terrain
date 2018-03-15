@@ -20,7 +20,6 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-
 void main(void){
     // Interpolate texcoords
     vec2 texcoord = (gl_TessCoord.x * tcs_in[0].texcoord) +
@@ -34,10 +33,9 @@ void main(void){
                     (gl_TessCoord.z * gl_in[2].gl_Position) +
                     vec4(0.f, displacement, 0.f, 0.f);
 
-    // Compute normal
-
     tes_out.distance = length((view * model * position).xyz);
     tes_out.texcoord = texcoord;
+
     gl_Position = projection * view * model * position;
 
     tes_out.viewDirection = -gl_Position.xyz;

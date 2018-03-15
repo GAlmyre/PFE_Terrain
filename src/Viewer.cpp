@@ -130,22 +130,6 @@ void Viewer::keyPressEvent(QKeyEvent *e) {
     case Qt::Key_Escape:
       QCoreApplication::instance()->quit();
       break;
-      //Wireframe
-    case Qt::Key_W:
-//      if (e->modifiers() & Qt::ControlModifier) {
-//        m_wireframe = !m_wireframe;
-//        makeCurrent();
-//        m_engine->setWireframe(m_wireframe);
-//        doneCurrent();
-//      }
-      break;
-      //Reload Shaders
-    case Qt::Key_R:
-//      if (e->modifiers() & Qt::ControlModifier) {
-//        m_engine->reloadShaders();
-//      }
-      break;
-      //Movement
     default:
       QOpenGLWidget::keyPressEvent(e);
   }

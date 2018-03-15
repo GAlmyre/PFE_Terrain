@@ -19,7 +19,6 @@ public:
   void init();
 
   void setHeightMap(const QString &filename);
-  //void setHeightMap(const QImage& heightmap);
   void setTexture(const QImage&  texture);
   void setHeightScale(float heightScale);
 
@@ -36,14 +35,12 @@ public:
 
   bool intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float &t);
 
-  const QImage &heightmap();
-
   void updateBaseMesh();
   void clean();
 
   void createGrid(float width, float height, unsigned int nbCols, unsigned int nbRows, bool quads);
   void generateTessellatedPatches();
-  
+
 private:
   struct Vertex {
     Vertex(const Eigen::Vector3f &position, const Eigen::Vector2f &texcoords, float edgeLOD, float faceLOD)
@@ -54,28 +51,23 @@ private:
     float edgeLOD;
     float faceLOD;
   };
-  std::vector<Vertex> _vertices;
-  
   GLuint _vao;
   GLuint _vbo;
-  
+
   QOpenGLTexture *_heightMap = nullptr;
   QOpenGLTexture *_texture = nullptr;
-  QImage _heightMapImage;
 
   cimg_library::CImg<float> _heightMapCImg;
-  GLuint _heightMapGL;
 
   unsigned int _pixelsPerPatch;
   bool _quadPatches;
   int _width, _height, _rows, _cols;
   float _heightScale;
 
-
   //##### instanciation #####
 
   unsigned int _nbPatchs = 0;
-  
+
   std::vector<unsigned int> _patchNbElements;//filled
   std::vector<float> _instPatchTessLevels;
   std::vector<float> _instVertexPositions;//filled
@@ -87,7 +79,7 @@ private:
   GLuint _instVertexParentsSSBO;//init filled
   GLuint _instPatchTransformSSBO;//init filled
   GLuint _instPatchTexTransformSSBO;//init filled
-  GLuint _instPatchTessLevelsSSBO;//init 
+  GLuint _instPatchTessLevelsSSBO;//init
 
   bool _needPatchTransformSSBOUpdate;
 
@@ -95,7 +87,7 @@ private:
   QOpenGLBuffer * _instVertexIDBuffer[NB_TESS_LEVELS]; //created and filled
   std::vector<unsigned int> _instPatchID[NB_TESS_LEVELS]; //created filled
   QOpenGLBuffer * _instPatchIDBuffer[NB_TESS_LEVELS];//created and filled
-  
+
 private:
   void fillVertexArrayBuffer();
 

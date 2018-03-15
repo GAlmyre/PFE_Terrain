@@ -28,7 +28,7 @@ out VertexData {
 
 void main()
 {
-  gl_Position = projection*view*model*vec4(vtx_position, 1.0);
+  gl_Position = projection * view * model * vec4(vtx_position, 1.0);
 
   vs_out.position = vec4(vtx_position, 1.);
   vs_out.texcoord = vtx_texcoord;
