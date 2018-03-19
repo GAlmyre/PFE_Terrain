@@ -9,6 +9,8 @@
 #include "VariableOption.h"
 #include "ComboBoxOption.h"
 
+#include <chrono>
+
 using namespace Eigen;
 
 class TerrainScene : public Scene {
@@ -53,6 +55,7 @@ public:
 
     // Benchmarking queries
     _f->glGenQueries(1, &_primGenQuery);
+    _f->glGenQueries(1, &_gpuTimeQuery);
   }
 
   void loadShaders(){
@@ -104,12 +107,31 @@ public:
       _needShaderReloading = false;
     }
 
-    GLint available;
-    _f->glGetQueryObjectiv(_primGenQuery, GL_QUERY_RESULT_AVAILABLE, &available);
-    if (available) {
+    /* Benchmarking */
+    GLint primAvailable, timeAvailable;
+    _f->glGetQueryObjectiv(_primGenQuery, GL_QUERY_RESULT_AVAILABLE, &primAvailable);
+    if (primAvailable) {
       _f->glGetQueryObjectuiv(_primGenQuery, GL_QUERY_RESULT, &_primGens);
-      std::cout << " Triangles : " << _primGens << std::endl;
     }
+
+    _f->glGetQueryObjectiv(_gpuTimeQuery, GL_QUERY_RESULT_AVAILABLE, &timeAvailable);
+    if (timeAvailable) {
+      _f->glGetQueryObjectuiv(_gpuTimeQuery, GL_QUERY_RESULT, &_gpuTime); // GPU time in ns
+    }
+
+    if (_isBenchmarking && timeAvailable && primAvailable) {
+      _benchmark.emplace_back(_primGens, _gpuTime / 1000000.0, _cpuTime.count());
+
+      _primGenLabel->setText(QString::number(_primGens));
+      _gpuTimeLabel->setText(QString::number(_gpuTime / 1000000.0, 'f', 6) + "ms");
+      _cpuTimeLabel->setText(QString::number(_cpuTime.count(), 'f', 6) + " ms");
+      _benchmarkFrame->update();
+    }
+
+    // Begin GPU Time count
+    _f->glBeginQuery(GL_TIME_ELAPSED, _gpuTimeQuery);
+    // Begin CPU Time count
+    auto cpuTimeStart = std::chrono::high_resolution_clock::now();
 
     _f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -169,11 +191,11 @@ public:
     }
 
     /* Draw */
-    if(_tessellationMethod){
+    if(_tessellationMethod == INSTANCIATION) {
       Matrix4f VPMat = _camera->projectionMatrix()*_camera->viewMatrix().matrix();
       _terrain.computeTessellationLevels(VPMat, _camera->viewport(), _adaptativeFactor);
     }
-    
+
     if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
       _f->glDepthFunc(GL_LESS);
       _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -191,9 +213,9 @@ public:
         case HARDWARE:
           _terrain.drawHardwareTessellation(*currentPrg);
           break;
-      case INSTANCIATION:
-	_terrain.drawPatchInstanciation(*currentPrg);
-	break;
+        case INSTANCIATION:
+          _terrain.drawPatchInstanciation(*currentPrg);
+          break;
       }
 
       _f->glEndQuery(GL_PRIMITIVES_GENERATED);
@@ -218,6 +240,11 @@ public:
           break;
       }
     }
+
+    // End GPU Time count
+    _f->glEndQuery(GL_TIME_ELAPSED);
+    // End CPU Time count
+    _cpuTime = std::chrono::high_resolution_clock::now() - cpuTimeStart;
 
     if (_showNormals) drawNormals();
     if (intersectionFound) drawIntersection();
@@ -283,9 +310,11 @@ public:
   void clean() override {
     delete _simplePrg;
     delete _colormap;
+    delete _benchmarkFrame;
     _terrain.clean();
 
     _f->glDeleteQueries(1, &_primGenQuery);
+    _f->glDeleteQueries(1, &_gpuTimeQuery);
   }
 
   QGroupBox* createDisplayGroupBox(){
@@ -629,6 +658,7 @@ public:
     frame->setLayout(VLayout);
     scrollArea->setWidget(frame);
     dock->setWidget(scrollArea);
+
     return dock;
   }
 
@@ -650,6 +680,19 @@ public:
                        this->_terrain.setTexture(im);
                      });
     _mainWindow = mw;
+
+    // Create Benchmark window
+    _benchmarkFrame = new QFrame;
+    _benchmarkFrame->setWindowFlags(Qt::WindowStaysOnTopHint);
+    QFormLayout *formLayout = new QFormLayout;
+    _primGenLabel = new QLabel(_benchmarkFrame);
+    _gpuTimeLabel = new QLabel(_benchmarkFrame);
+    _cpuTimeLabel = new QLabel(_benchmarkFrame);
+    formLayout->addRow("Triangles", _primGenLabel);
+    formLayout->addRow("GPU Time", _gpuTimeLabel);
+    formLayout->addRow("CPU Time", _cpuTimeLabel);
+    _benchmarkFrame->setLayout(formLayout);
+    _benchmarkFrame->setWindowTitle("Benchmarking");
   }
 
   virtual void resize(int width, int height) {
@@ -724,6 +767,15 @@ public:
       case Qt::Key_N:
         _showNormals = !_showNormals;
         break;
+      case Qt::Key_B:
+        if (_isBenchmarking) {
+          _benchmarkFrame->hide();
+          writeBenchmarkData();
+          _benchmark.clear();
+        } else {
+          _benchmarkFrame->show();
+        }
+        _isBenchmarking = !_isBenchmarking;
       default:break;
     }
   }
@@ -759,6 +811,24 @@ public:
 
   virtual void focusOutEvent(QFocusEvent *event) {
     _camera->stopMovement();
+  }
+
+  void writeBenchmarkData() {
+    QString fileName = "../data/bench/" + QDateTime::currentDateTime().toString(QString("yyyy_MM_dd_hh_mm_ss")) + ".txt";
+
+    QFile file(fileName);
+    if (file.open(QIODevice::WriteOnly)) {
+      QTextStream out(&file);
+      out.setRealNumberNotation(QTextStream::FixedNotation);
+      out.setRealNumberPrecision(6);
+
+      for (auto &stat : _benchmark) {
+        out << stat.primitiveGenerated << ", " << stat.gpuTime << ", " << stat.cpuTime << "\n";
+      }
+
+      file.close();
+    }
+
   }
 
 private:
@@ -804,8 +874,26 @@ private:
 
   MainWindow *_mainWindow;
 
-  GLuint _primGenQuery;
+  /* Benchmarking */
+  GLuint _primGenQuery, _gpuTimeQuery;
+  struct Stats {
+    Stats(unsigned int primitiveGenerated, double gpuTime, double cpuTime)
+            : primitiveGenerated(primitiveGenerated), gpuTime(gpuTime), cpuTime(cpuTime) {}
+
+    unsigned int primitiveGenerated;
+    double gpuTime;
+    double cpuTime;
+  };
   unsigned int _primGens = 0;
+  unsigned int _gpuTime = 0;
+  std::chrono::duration<double, std::milli> _cpuTime;
+  std::vector<Stats> _benchmark;
+  bool _isBenchmarking = false;
+
+  QFrame *_benchmarkFrame = nullptr;
+  QLabel *_primGenLabel = nullptr;
+  QLabel *_gpuTimeLabel = nullptr;
+  QLabel *_cpuTimeLabel = nullptr;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H

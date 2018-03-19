@@ -193,7 +193,7 @@ void Terrain::computeTessellationLevels(const Matrix4f &MVP, const Vector2f &vie
     float dist = (ndc1-ndc0).norm();
 
     _instPatchTessLevels.push_back(std::max(0.f, std::min(dist, 64.f))*factor);
-    std::cout << "f : " << f.idx() << " lvl : " << std::max(0.f, std::min(dist, 64.f)) << std::endl;
+    //std::cout << "f : " << f.idx() << " lvl : " << std::max(0.f, std::min(dist, 64.f)) << std::endl;
     
   }
 }

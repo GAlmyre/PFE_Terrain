@@ -31,13 +31,13 @@ Viewer::Viewer(QMainWindow *parent)
 //  _scene = std::make_shared<TestInstanciationScene>();
 
   // If a dock is related to the current scene, create it
+  if(MainWindow * mw = dynamic_cast<MainWindow *>(_mainWindow))
+    _scene->connectToMainWindow(mw);
+
   QDockWidget *dock = _scene->getDock();
   if (dock) {
     _mainWindow->addDockWidget(Qt::RightDockWidgetArea, dock);
   }
-
-  if(MainWindow * mw = dynamic_cast<MainWindow *>(_mainWindow))
-    _scene->connectToMainWindow(mw);
 }
 
 Viewer::~Viewer(){
@@ -145,7 +145,7 @@ void Viewer::focusOutEvent(QFocusEvent * event) {
 }
 
 void Viewer::messageLogged(const QOpenGLDebugMessage &msg) {
-  if(msg.id() == 131169 || msg.id() == 131185 || msg.id() == 131218 || msg.id() == 131204) return;
+  if(msg.id() == 131169 || msg.id() == 131185 || msg.id() == 131218 || msg.id() == 131204 || msg.id() == 1282) return;
   qDebug() << msg;
 }
 

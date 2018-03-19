@@ -54,29 +54,7 @@ void MainWindow::createActions() {
 
   _exitAction = new QAction(tr("&Exit"), this);
   _exitAction->setStatusTip(tr("Exit the program"));
-  connect(_exitAction, SIGNAL(triggered()), this, SLOT(exit()));
-
-//  _toggleFogAction = new QAction(tr("&Toggle Fog"), this);
-//  _toggleFogAction->setStatusTip(tr("Enable/disable the distance fog"));
-//  _toggleFogAction->setCheckable(true);
-//  connect(_toggleFogAction, SIGNAL(toggled(bool)), this, SLOT(toggleFog()));
-//
-//  // creates mutually exclusive toggled Options to choose the tessellation method
-//  _autoTessellationAction = new QAction(tr("&Automatic Tessellation"), this);
-//  _autoTessellationAction->setStatusTip(tr("Use openGL's automatic tessellation"));
-//  _autoTessellationAction->setCheckable(true);
-//  connect(_autoTessellationAction, SIGNAL(toggled(bool)), this, SLOT(tessellationMethod()));
-//
-//  _customTessellationAction = new QAction(tr("&Custom Tessellation"), this);
-//  _customTessellationAction->setStatusTip(tr("Use custom tessellation"));
-//  _customTessellationAction->setCheckable(true);
-//  connect(_customTessellationAction, SIGNAL(toggled(bool)), this, SLOT(tessellationMethod()));
-//
-//  _tessellationMethodsGroup = new QActionGroup(this);
-//  _tessellationMethodsGroup->addAction(_autoTessellationAction);
-//  _tessellationMethodsGroup->addAction(_customTessellationAction);
-//  _autoTessellationAction->setChecked(true);
-
+  connect(_exitAction, SIGNAL(triggered()), QCoreApplication::instance(), SLOT(quit()));
 }
 
 void MainWindow::createMenu() {
@@ -86,13 +64,6 @@ void MainWindow::createMenu() {
   _fileMenu->addAction(_loadTextureAction);
   _fileMenu->addSeparator();
   _fileMenu->addAction(_exitAction);
-
-//  _viewMenu = menuBar()->addMenu(tr("&View"));
-//  _viewMenu->addAction(_toggleFogAction);
-//
-//  _optionMenu = menuBar()->addMenu(tr("&Options"));
-//  _optionMenu->addAction(_autoTessellationAction);
-//  _optionMenu->addAction(_customTessellationAction);
 }
 
 // Handles the opening of a heightmap
@@ -127,20 +98,4 @@ void MainWindow::loadTexture() {
   std::cout << "opened texture file :" << fileName.toStdString() << '\n';
 
   emit loadedTexture(texture);
-}
-
-void MainWindow::toggleFog() {
-//
-//  std::cout << "Distance fog : " << _toggleFogAction->isChecked() << '\n';
-}
-
-void MainWindow::tessellationMethod(){
-
-//  std::cout << "Auto tessellation : " << _autoTessellationAction->isChecked() << '\n';
-//  std::cout << "Custom tessellation : " << _customTessellationAction->isChecked() << '\n';
-}
-
-// Closes the main window
-void MainWindow::exit() {
-  this->close();
 }

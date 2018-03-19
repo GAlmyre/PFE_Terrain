@@ -32,27 +32,16 @@ private:
   Ui::MainWindow *_ui;
   Viewer* _viewer;
   QMenu* _fileMenu;
-  QMenu* _viewMenu;
-  QMenu* _optionMenu;
   QAction* _loadHeightmapAction;
   QAction* _loadTextureAction;
   QAction* _exitAction;
-  QAction* _toggleFogAction;
-
-  // mutually exclusive
-  QActionGroup* _tessellationMethodsGroup;
-  QAction* _autoTessellationAction;
-  QAction* _customTessellationAction;
 
   void createMenu();
   void createActions();
 
 private slots:
-  void exit();
   void loadHeightMap();
   void loadTexture();
-  void toggleFog();
-  void tessellationMethod();
 
  signals:
   void loadedHeightMap(const QImage&);
