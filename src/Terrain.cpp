@@ -50,15 +50,10 @@ void Terrain::init() {
 
   _instVertexArray.create();
 
-  f->glGenTextures(1, &_heightMapGL);
 }
 
 void Terrain::setHeightMap(const QString &filename) {
   _heightMapCImg.assign(filename.toStdString().c_str());
-
-  // Manually calculate gradient
-  CImg<float> gradX(_heightMapCImg.width(), _heightMapCImg.height(), 1, 1);
-  CImg<float> gradZ(_heightMapCImg.width(), _heightMapCImg.height(), 1, 1);
 
   bool is16bits = _heightMapCImg.max() > 255.f;
   float ushortMax = std::numeric_limits<unsigned short>::max();
@@ -66,22 +61,15 @@ void Terrain::setHeightMap(const QString &filename) {
   float max = is16bits ? ushortMax : ucharMax;
   float half = (max + 1.f) / 2.f;
 
+  // Manually compute gradient
+  CImg<float> gradX(_heightMapCImg.width(), _heightMapCImg.height(), 1, 1);
+  CImg<float> gradZ(_heightMapCImg.width(), _heightMapCImg.height(), 1, 1);
+
   CImg_3x3(I,float);
   cimg_for3x3(_heightMapCImg,x,y,0,0,I,float) {
       gradX(x, y, 0) = (Ipc - Inc) / 2.f + half;
       gradZ(x, y, 0) = (Icp - Icn) / 2.f + half;
     }
-
-//  cimg_library::CImgList<unsigned short> l = _heightMapCImg.get_gradient("xy", 3);
-//  l[0] /= 8.f;
-//  l[1] /= 8.f;
-//  if (is16bits) {
-//    l[0] += half;
-//    l[1] += half;
-//  } else {
-//    l[0] += half;
-//    l[1] += half;
-//  }
 
   _heightMapCImg.append(gradX, 'c');
   _heightMapCImg.append(gradZ, 'c');
@@ -116,8 +104,6 @@ void Terrain::setHeightMap(const QString &filename) {
   // Normalize heightmap to [0, 1]
   _heightMapCImg /= ushortMax;
 
-  _heightMapCImg.print("Normalized Heightmap");
-
   updateBaseMesh();
 }
 
@@ -143,8 +129,6 @@ void Terrain::draw(QOpenGLShaderProgram &shader){
 
   shader.setUniformValue(shader.uniformLocation("model"), QMatrix4x4());
   if(_heightMap) _heightMap->bind(0);
-//  f->glActiveTexture(GL_TEXTURE0);
-//  f->glBindTexture(GL_TEXTURE_2D, _heightMapGL);
   if(_texture)   _texture->bind(1);
   shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
@@ -164,8 +148,6 @@ void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
   // Set uniforms
   shader.setUniformValue(shader.uniformLocation("model"), QMatrix4x4());
   if(_heightMap) _heightMap->bind(0);
-//  f->glActiveTexture(GL_TEXTURE0);
-//  f->glBindTexture(GL_TEXTURE_2D, _heightMapGL);
   if(_texture)   _texture->bind(1);
   shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
@@ -321,7 +303,6 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 void Terrain::updateBaseMesh()
 {
   //if we already loaded a height map
-
   if(!_heightMapCImg.is_empty())
   {
     _width = _heightMapCImg.width();
@@ -405,7 +386,7 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
     i3 = i1+nbRows+1;  i4 = i3+1;
     v1 = verts[i1];    v2 = verts[i2];
     v3 = verts[i3];    v4 = verts[i4];
-    
+
     if(quads){
       _baseMesh.add_quad(v1, v3, v4, v2);
     } else {
@@ -486,7 +467,7 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
 
   _needPatchTransformSSBOUpdate = true;
 
-  
+
 }
 
 void Terrain::generateTessellatedPatches(){
@@ -602,7 +583,7 @@ void Terrain::generateTessellatedPatches(){
       }
     }
   }
-  
+
   // ##### fill the tess level vertexIDBuffer with vertices indices
   std::vector<unsigned int> vertexID[NB_TESS_LEVELS];
   for(Surface_mesh::Face f : mesh.faces()){
@@ -641,20 +622,14 @@ void Terrain::generateTessellatedPatches(){
 }
 
 void Terrain::clean() {
-  if (_heightMap) delete _heightMap;
-  if (_texture) delete _texture;
+  delete _heightMap;
+  delete _texture;
 
   GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
   f->glDeleteVertexArrays(1, &_vao);
   f->glDeleteBuffers(1, &_vbo);
 
   //TODO add delete for instanciation
-
-  f->glDeleteTextures(1, &_heightMapGL);
-}
-
-const QImage &Terrain::heightmap() {
-  return _heightMapImage;
 }
 
 bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float &tHit) {
@@ -709,23 +684,21 @@ bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float &tHit) 
   if (tmin < 0) tmin = 0;
 
   /* We found an intersection with the AABB, let's find the intersection with the terrain by ray marching */
-  float factor = _heightScale / 255.f;
   float deltat = 0.1f;
 
   // If we intersect at the begining of the BBox, we are under the terrain, don't consider it as an intersection
   Vector3f p = orig + dir * (tmin + deltat);
-  if (p.y() < qRed(_heightMapImage.pixel((int) p.x(), (int) p.z())) * factor)
+  if (p.y() < _heightMapCImg((int) p.x(), (int) p.z(), 0) * _heightScale)
     return false;
 
   for (float t = tmin + deltat; t <= tmax - deltat; t += deltat) {
     Vector3f p = orig + dir * t;
-    float h = qRed(_heightMapImage.pixel((int) p.x(), (int) p.z())) * factor;
+    float h = _heightMapCImg((int) p.x(), (int) p.z(), 0) * _heightScale;
     if (p.y() < h) {
       tHit = t - 0.5 * deltat;
       return true;
     }
   }
-  std::cout << "No intersection" << std::endl;
   return false;
 }
 
@@ -741,23 +714,23 @@ float Terrain::getHeight(float x, float z, bool scaled) {
   float val = _heightMapCImg.linear_atXY(x, z);
   return scaled ? val * _heightScale : val;
 
-  int x1 = std::max(std::min(static_cast<int>(x), _width - 2), 0);
-  int z1 = std::max(std::min(static_cast<int>(z), _height - 2), 0);
-
-  float Q11 = qRed(_heightMapImage.pixel(x1,     z1));
-  float Q21 = qRed(_heightMapImage.pixel(x1 + 1, z1));
-  float Q12 = qRed(_heightMapImage.pixel(x1,     z1 + 1));
-  float Q22 = qRed(_heightMapImage.pixel(x1 + 1, z1 + 1));
-
-  float dx = std::min(std::max(x - x1, 0.f), 1.f);
-  float dz = std::min(std::max(z - z1, 0.f), 1.f);
-
-  float R1 = Q11 * (1.f - dx) + Q21 * dx;
-  float R2 = Q12 * (1.f - dx) + Q22 * dx;
-
-  float P = R1 * (1.f - dz) + R2 * dz;
-
-  return (scaled ? P * _heightScale : P) / 255.f;
+//  int x1 = std::max(std::min(static_cast<int>(x), _width - 2), 0);
+//  int z1 = std::max(std::min(static_cast<int>(z), _height - 2), 0);
+//
+//  float Q11 = qRed(_heightMapImage.pixel(x1,     z1));
+//  float Q21 = qRed(_heightMapImage.pixel(x1 + 1, z1));
+//  float Q12 = qRed(_heightMapImage.pixel(x1,     z1 + 1));
+//  float Q22 = qRed(_heightMapImage.pixel(x1 + 1, z1 + 1));
+//
+//  float dx = std::min(std::max(x - x1, 0.f), 1.f);
+//  float dz = std::min(std::max(z - z1, 0.f), 1.f);
+//
+//  float R1 = Q11 * (1.f - dx) + Q21 * dx;
+//  float R2 = Q12 * (1.f - dx) + Q22 * dx;
+//
+//  float P = R1 * (1.f - dz) + R2 * dz;
+//
+//  return (scaled ? P * _heightScale : P) / 255.f;
 }
 
 bool Terrain::coordsInTerrain(float x, float z) {
@@ -777,36 +750,36 @@ void Terrain::fillVertexArrayBuffer() {
   // vertex circulator
   Surface_mesh::Vertex v0, v1, v2;
   for (fit = _baseMesh.faces_begin(); fit != fend; ++fit)
-    {
-      float faceLOD = maxElevation[*fit];
+  {
+    float faceLOD = maxElevation[*fit];
 
-      Surface_mesh::Halfedge he0 = _baseMesh.halfedge(*fit);
-      Surface_mesh::Halfedge he1 = _baseMesh.next_halfedge(he0);
-      Surface_mesh::Halfedge he2 = _baseMesh.next_halfedge(he1);
+    Surface_mesh::Halfedge he0 = _baseMesh.halfedge(*fit);
+    Surface_mesh::Halfedge he1 = _baseMesh.next_halfedge(he0);
+    Surface_mesh::Halfedge he2 = _baseMesh.next_halfedge(he1);
 
-      v0 = _baseMesh.from_vertex(he0);
-      v1 = _baseMesh.from_vertex(he1);
-      v2 = _baseMesh.from_vertex(he2);
+    v0 = _baseMesh.from_vertex(he0);
+    v1 = _baseMesh.from_vertex(he1);
+    v2 = _baseMesh.from_vertex(he2);
 
-      Surface_mesh::Face oppositef0 = _baseMesh.face(_baseMesh.opposite_halfedge(he1));
-      Surface_mesh::Face oppositef1 = _baseMesh.face(_baseMesh.opposite_halfedge(he2));
-      Surface_mesh::Face oppositef2 = _baseMesh.face(_baseMesh.opposite_halfedge(he0));
+    Surface_mesh::Face oppositef0 = _baseMesh.face(_baseMesh.opposite_halfedge(he1));
+    Surface_mesh::Face oppositef1 = _baseMesh.face(_baseMesh.opposite_halfedge(he2));
+    Surface_mesh::Face oppositef2 = _baseMesh.face(_baseMesh.opposite_halfedge(he0));
 
-      float edgeLOD[3] = { faceLOD, faceLOD, faceLOD };
-      if (oppositef0.is_valid()) {
-	edgeLOD[0] = (edgeLOD[0] + maxElevation[oppositef0]) / 2.f;
-      }
-      if (oppositef1.is_valid()) {
-	edgeLOD[1] = (edgeLOD[1] + maxElevation[oppositef1]) / 2.f;
-      }
-      if (oppositef2.is_valid()) {
-	edgeLOD[2] = (edgeLOD[2] + maxElevation[oppositef2]) / 2.f;
-      }
-
-      vertices.emplace_back(positions[v0], texcoords[v0], edgeLOD[0], faceLOD);
-      vertices.emplace_back(positions[v1], texcoords[v1], edgeLOD[1], faceLOD);
-      vertices.emplace_back(positions[v2], texcoords[v2], edgeLOD[2], faceLOD);
+    float edgeLOD[3] = { faceLOD, faceLOD, faceLOD };
+    if (oppositef0.is_valid()) {
+      edgeLOD[0] = (edgeLOD[0] + maxElevation[oppositef0]) / 2.f;
     }
+    if (oppositef1.is_valid()) {
+      edgeLOD[1] = (edgeLOD[1] + maxElevation[oppositef1]) / 2.f;
+    }
+    if (oppositef2.is_valid()) {
+      edgeLOD[2] = (edgeLOD[2] + maxElevation[oppositef2]) / 2.f;
+    }
+
+    vertices.emplace_back(positions[v0], texcoords[v0], edgeLOD[0], faceLOD);
+    vertices.emplace_back(positions[v1], texcoords[v1], edgeLOD[1], faceLOD);
+    vertices.emplace_back(positions[v2], texcoords[v2], edgeLOD[2], faceLOD);
+  }
 
   GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
 

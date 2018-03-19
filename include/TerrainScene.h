@@ -41,7 +41,7 @@ public:
     _camera->setViewport(600, 400);
     _camera->setSpeed(_defaultCamSpeed);
 
-    _testSphere.generate(1.);
+    _testSphere.generate(1.f);
     _testSphere.init(_f);
     _testSphere._transformation = Translation3f(200.f, 100.f, 200.f);
 
@@ -50,6 +50,9 @@ public:
     _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
+
+    // Benchmarking queries
+    _f->glGenQueries(1, &_primGenQuery);
   }
 
   void loadShaders(){
@@ -77,6 +80,15 @@ public:
     _fillPrg = new QOpenGLShaderProgram();
     _fillPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/fill.vert");
     _fillPrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/fill.frag");
+    _fillPrg->link();
+
+    _normalPrg = new QOpenGLShaderProgram();
+    _normalPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
+    _normalPrg->addShaderFromSourceFile(QOpenGLShader::TessellationControl, "../data/shaders/simpleTess.tesc");
+    _normalPrg->addShaderFromSourceFile(QOpenGLShader::TessellationEvaluation, "../data/shaders/simpleTess.tese");
+    _normalPrg->addShaderFromSourceFile(QOpenGLShader::Geometry, "../data/shaders/normals.geom");
+    _normalPrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/fill.frag");
+    _normalPrg->link();
 
     _simpleInstTessPrg = new QOpenGLShaderProgram();
     _simpleInstTessPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simpleInstTess.vert");
@@ -92,188 +104,169 @@ public:
       _needShaderReloading = false;
     }
 
-    _f->glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-    if(_tessellationMethod == TessellationMethod::NO_TESSELLATION)
-    {
-      _simplePrg->bind();
-
-      _f->glUniform1f(_simplePrg->uniformLocation("heightScale"), _terrain.heightScale());
-      _f->glUniformMatrix4fv(_simplePrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
-      _f->glUniformMatrix4fv(_simplePrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("Ka"), _ambientCoef);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("Kd"), _diffuseCoef);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("Ks"), _specularCoef);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("shininess"), _shininessCoef);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("distanceFog"), _distFog);
-      _f->glUniform3fv(_simplePrg->uniformLocation("fogColor"), 1, _fogColor.data());
-      Vector3f lightDir = _light.getDirection();
-      Vector3f lightColor = _light.getColor();
-
-      _f->glUniform3fv(_simplePrg->uniformLocation("lightDirection"), 1, lightDir.data());
-      _f->glUniform3fv(_simplePrg->uniformLocation("lightColor"), 1, lightColor.data());
-
-      _colormap->bind(3);
-      _simplePrg->setUniformValue(_simplePrg->uniformLocation("colormap"), 3);
-
-
-      if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
-        _f->glDepthFunc(GL_LESS);
-        _simplePrg->setUniformValue(_simplePrg->uniformLocation("wireframe"), false);
-        _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(1,0,0));
-        _simplePrg->setUniformValue(_simplePrg->uniformLocation("texturing_mode"), _texMode);
-        _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        _terrain.draw(*_simplePrg);
-      }
-
-      if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
-        _f->glDepthFunc(GL_LEQUAL);
-        _simplePrg->setUniformValue(_simplePrg->uniformLocation("wireframe"), true);
-        _simplePrg->setUniformValue(_simplePrg->uniformLocation("v_color"), QVector3D(0,1,0));
-        _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        _terrain.draw(*_simplePrg);
-      }
-      _simplePrg->release();
-    } else if(_tessellationMethod == TessellationMethod::HARDWARE) {
-      _simpleTessPrg->bind();
-
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("Ka"), _ambientCoef);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("Kd"), _diffuseCoef);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("Ks"), _specularCoef);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("shininess"), _shininessCoef);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("distanceFog"), _distFog);
-      _f->glUniform3fv(_simpleTessPrg->uniformLocation("fogColor"), 1, _fogColor.data());
-      Vector3f lightDir = _light.getDirection();
-      Vector3f lightColor = _light.getColor();
-
-      _f->glUniform3fv(_simpleTessPrg->uniformLocation("lightDirection"), 1, lightDir.data());
-      _f->glUniform3fv(_simpleTessPrg->uniformLocation("lightColor"), 1, lightColor.data());
-
-      _f->glUniformMatrix4fv(_simpleTessPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
-      _f->glUniformMatrix4fv(_simpleTessPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
-
-      _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
-
-      _f->glUniform1f(_simpleTessPrg->uniformLocation("TessLevelInner"), _constantInnerTessellationLevel);
-      Vector3f outerLvl = Vector3f::Constant(_constantOuterTessellationLevel);
-      _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
-      _f->glUniform1f(_simpleTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
-      _f->glUniform1f(_simpleTessPrg->uniformLocation("heightScale"), _terrain.heightScale());
-      _f->glUniform2fv(_simpleTessPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
-
-      _colormap->bind(3);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("colormap"), 3);
-
-      if (_tessellationMode == TessellationMode::CONSTANT)
-        _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), TessellationMode::CONSTANT);
-      else
-        _f->glUniform1i(_simpleTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode+1);
-      if (_tessellationMode == ADAPTATIVE_FROM_POV) {
-        _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
-      } else if (_tessellationMode == ADAPTATIVE_FROM_FIXED_POINT) {
-        /* TODO : Implement Placement of point on scene */
-        _f->glUniform3fv(_simpleTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
-      }
-
-      if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
-      _f->glDepthFunc(GL_LESS);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("wireframe"), false);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("v_color"), QVector3D(1,0,0));
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("texturing_mode"), _texMode);
-      _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-      _terrain.drawHardwareTessellation(*_simpleTessPrg);
-      }
-
-      if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
-      _f->glDepthFunc(GL_LEQUAL);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("wireframe"), true);
-      _simpleTessPrg->setUniformValue(_simpleTessPrg->uniformLocation("v_color"), QVector3D(0,1,0));
-      _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      _terrain.drawHardwareTessellation(*_simpleTessPrg);
-      }
-
-      _simpleTessPrg->release();
+    GLint available;
+    _f->glGetQueryObjectiv(_primGenQuery, GL_QUERY_RESULT_AVAILABLE, &available);
+    if (available) {
+      _f->glGetQueryObjectuiv(_primGenQuery, GL_QUERY_RESULT, &_primGens);
+      std::cout << " Triangles : " << _primGens << std::endl;
     }
-    else{//INSTANCIATION
-      _simpleInstTessPrg->bind();
 
-      _simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("Ka"), _ambientCoef);
-      _simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("Kd"), _diffuseCoef);
-      _simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("Ks"), _specularCoef);
-      _simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("shininess"), _shininessCoef);
-      _simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("distanceFog"), _distFog);
-      _f->glUniform3fv(_simpleInstTessPrg->uniformLocation("fogColor"), 1, _fogColor.data());
-      Vector3f lightDir = _light.getDirection();
-      Vector3f lightColor = _light.getColor();
+    _f->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-      _f->glUniform3fv(_simpleInstTessPrg->uniformLocation("lightDirection"), 1, lightDir.data());
-      _f->glUniform3fv(_simpleInstTessPrg->uniformLocation("lightColor"), 1, lightColor.data());
+    /* Shader Program selection */
+    QOpenGLShaderProgram *currentPrg = nullptr;
+    switch (_tessellationMethod) {
+      case TessellationMethod::NO_TESSELLATION:
+        currentPrg = _simplePrg;
+        break;
+      case TessellationMethod::HARDWARE:
+        currentPrg = _simpleTessPrg;
+        break;
+      case TessellationMethod::INSTANCIATION:
+        currentPrg = _simpleInstTessPrg;
+        break;
+      default:
+        return;
+    }
 
-      _f->glUniformMatrix4fv(_simpleInstTessPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
-      _f->glUniformMatrix4fv(_simpleInstTessPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+    /* Set common uniforms */
+    currentPrg->bind();
 
+    currentPrg->setUniformValue(currentPrg->uniformLocation("Ka"), _ambientCoef);
+    currentPrg->setUniformValue(currentPrg->uniformLocation("Kd"), _diffuseCoef);
+    currentPrg->setUniformValue(currentPrg->uniformLocation("Ks"), _specularCoef);
+    currentPrg->setUniformValue(currentPrg->uniformLocation("shininess"), _shininessCoef);
+    currentPrg->setUniformValue(currentPrg->uniformLocation("distanceFog"), _distFog);
+    _f->glUniform3fv(currentPrg->uniformLocation("fogColor"), 1, _fogColor.data());
+    _f->glUniform3fv(currentPrg->uniformLocation("lightDirection"), 1, _light.getDirection().data());
+    _f->glUniform3fv(currentPrg->uniformLocation("lightColor"), 1, _light.getColor().data());
+
+    _f->glUniformMatrix4fv(currentPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
+    _f->glUniformMatrix4fv(currentPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+
+    _colormap->bind(3);
+    currentPrg->setUniformValue(currentPrg->uniformLocation("colormap"), 3);
+
+    if (_tessellationMethod == HARDWARE || _tessellationMethod == INSTANCIATION) {
       _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
 
-      _f->glUniform1f(_simpleInstTessPrg->uniformLocation("TessLevelInner"), _constantInnerTessellationLevel);
+      _f->glUniform1f(currentPrg->uniformLocation("TessLevelInner"), _constantInnerTessellationLevel);
       Vector3f outerLvl = Vector3f::Constant(_constantOuterTessellationLevel);
-      _f->glUniform3fv(_simpleInstTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
-      _f->glUniform1f(_simpleInstTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
-      _f->glUniform1f(_simpleInstTessPrg->uniformLocation("heightScale"), _terrain.heightScale());
-      _f->glUniform1f(_simpleInstTessPrg->uniformLocation("LODfactor"), _adaptativeFactor);
-      _f->glUniform2fv(_simpleInstTessPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
+      _f->glUniform3fv(currentPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
+      _f->glUniform1f(currentPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
+      _f->glUniform1f(currentPrg->uniformLocation("heightScale"), _terrain.heightScale());
+      _f->glUniform2fv(currentPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
+    }
 
-      _colormap->bind(3);
-      _simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("colormap"), 3);
+    _f->glUniform1i(currentPrg->uniformLocation("tessMethod"),
+                    (_tessellationMode == CONSTANT) ? CONSTANT : _adaptativeTessellationMode + 1);
 
-      if (_tessellationMode == TessellationMode::CONSTANT)
-        _f->glUniform1i(_simpleInstTessPrg->uniformLocation("tessMethod"), TessellationMode::CONSTANT);
-      else
-        _f->glUniform1i(_simpleInstTessPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode+1);
-      if (_tessellationMode == ADAPTATIVE_FROM_POV) {
-        _f->glUniform3fv(_simpleInstTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
-      } else if (_tessellationMode == ADAPTATIVE_FROM_FIXED_POINT) {
-        /* TODO : Implement Placement of point on scene */
-        _f->glUniform3fv(_simpleInstTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
-      }
+    if (_tessellationMode == ADAPTATIVE_FROM_POV) {
+      _f->glUniform3fv(currentPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
+    } else if (_tessellationMode == ADAPTATIVE_FROM_FIXED_POINT) {
+      /* TODO : Implement Placement of point on scene */
+      _f->glUniform3fv(currentPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
+    }
+
+    /* Draw */
+    if(_tessellationMethod){
       Matrix4f VPMat = _camera->projectionMatrix()*_camera->viewMatrix().matrix();
       _terrain.computeTessellationLevels(VPMat, _camera->viewport(), _adaptativeFactor);
+    }
+    
+    if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
+      _f->glDepthFunc(GL_LESS);
+      _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-      if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
-	_f->glDepthFunc(GL_LESS);
-	_simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("wireframe"), false);
-	_simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("v_color"), QVector3D(1,0,0));
-	_simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("texturing_mode"), _texMode);
-	_f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	_terrain.drawPatchInstanciation(*_simpleInstTessPrg);
+      currentPrg->setUniformValue(currentPrg->uniformLocation("wireframe"), false);
+      currentPrg->setUniformValue(currentPrg->uniformLocation("v_color"), QVector3D(1,0,0));
+      currentPrg->setUniformValue(currentPrg->uniformLocation("texturing_mode"), _texMode);
+
+      _f->glBeginQuery(GL_PRIMITIVES_GENERATED, _primGenQuery);
+
+      switch(_tessellationMethod) {
+        case NO_TESSELLATION:
+          _terrain.draw(*currentPrg);
+          break;
+        case HARDWARE:
+          _terrain.drawHardwareTessellation(*currentPrg);
+          break;
+      case INSTANCIATION:
+	_terrain.drawPatchInstanciation(*currentPrg);
+	break;
       }
 
-      if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
-	_f->glDepthFunc(GL_LEQUAL);
-	_simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("wireframe"), true);
-	_simpleInstTessPrg->setUniformValue(_simpleInstTessPrg->uniformLocation("v_color"), QVector3D(0,1,0));
-	_f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	_terrain.drawPatchInstanciation(*_simpleInstTessPrg);
-      }
-
-      _simpleInstTessPrg->release();
+      _f->glEndQuery(GL_PRIMITIVES_GENERATED);
     }
 
+    if(_drawMode == DrawMode::WIREFRAME || _drawMode == DrawMode::FILL_AND_WIREFRAME){
+      _f->glDepthFunc(GL_LEQUAL);
+      _f->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+      _simplePrg->setUniformValue(currentPrg->uniformLocation("wireframe"), true);
+      _simplePrg->setUniformValue(currentPrg->uniformLocation("v_color"), QVector3D(0,1,0));
+
+      switch(_tessellationMethod) {
+        case NO_TESSELLATION:
+          _terrain.draw(*currentPrg);
+          break;
+        case HARDWARE:
+          _terrain.drawHardwareTessellation(*currentPrg);
+          break;
+        case INSTANCIATION:
+          _terrain.drawPatchInstanciation(*currentPrg);
+          break;
+      }
+    }
+
+    if (_showNormals) drawNormals();
+    if (intersectionFound) drawIntersection();
+  }
+
+  void drawNormals() {
+    // Show normals
+    _normalPrg->bind();
+
+    _f->glUniformMatrix4fv(_normalPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
+    _f->glUniformMatrix4fv(_normalPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+
+    _f->glPatchParameteri(GL_PATCH_VERTICES, 3);
+
+    _f->glUniform1f(_normalPrg->uniformLocation("TessLevelInner"), _constantInnerTessellationLevel);
+    Vector3f outerLvl = Vector3f::Constant(_constantOuterTessellationLevel);
+    _f->glUniform3fv(_normalPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
+    _f->glUniform1f(_normalPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
+    _f->glUniform1f(_normalPrg->uniformLocation("heightScale"), _terrain.heightScale());
+    _f->glUniform2fv(_normalPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
+
+    if (_tessellationMode == TessellationMode::CONSTANT)
+      _f->glUniform1i(_normalPrg->uniformLocation("tessMethod"), TessellationMode::CONSTANT);
+    else
+      _f->glUniform1i(_normalPrg->uniformLocation("tessMethod"), _adaptativeTessellationMode+1);
+    if (_tessellationMode == ADAPTATIVE_FROM_POV) {
+      _f->glUniform3fv(_normalPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
+    } else if (_tessellationMode == ADAPTATIVE_FROM_FIXED_POINT) {
+      /* TODO : Implement Placement of point on scene */
+      _f->glUniform3fv(_normalPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
+    }
+
+    _f->glUniform4fv(_normalPrg->uniformLocation("color"), 1, Vector4f(1.f, 1.f, 0.f, 1.f).data());
+
+    _terrain.drawHardwareTessellation(*_normalPrg);
+  }
+
+  void drawIntersection() {
     _fillPrg->bind();
 
-    _fillPrg->setUniformValue(_fillPrg->uniformLocation("color"), QVector4D(1,1,1,1));
-    _f->glUniformMatrix4fv(_fillPrg->uniformLocation("model"), 1, GL_FALSE, _testSphere._transformation.data());
     _f->glUniformMatrix4fv(_fillPrg->uniformLocation("view"), 1, GL_FALSE, _camera->viewMatrix().data());
     _f->glUniformMatrix4fv(_fillPrg->uniformLocation("projection"), 1, GL_FALSE, _camera->projectionMatrix().data());
+    _f->glUniformMatrix4fv(_fillPrg->uniformLocation("model"), 1, GL_FALSE, Eigen::Affine3f::Identity().data());
 
-    _testSphere.display(*_fillPrg);
+    _fillPrg->setUniformValue(_fillPrg->uniformLocation("color"), QVector4D(1,1,1,1));
+    Line::draw(_f, _fillPrg, lineOrig, lineInterPoint); // Rayon
 
-    if (intersectionFound) {
-      _f->glUniformMatrix4fv(_fillPrg->uniformLocation("model"), 1, GL_FALSE, Eigen::Affine3f::Identity().data());
-      Line::draw(_f, _fillPrg, lineOrig, lineInterPoint); // Rayon
-
-      _fillPrg->setUniformValue(_fillPrg->uniformLocation("color"), QVector4D(1,0.5,0.1,1));
-      Point::draw(_f, _fillPrg, lineInterPoint);
-    }
+    _fillPrg->setUniformValue(_fillPrg->uniformLocation("color"), QVector4D(1,0.5,0.1,1));
+    Point::draw(_f, _fillPrg, lineInterPoint);
   }
 
   void update(float dt) override {
@@ -291,6 +284,8 @@ public:
     delete _simplePrg;
     delete _colormap;
     _terrain.clean();
+
+    _f->glDeleteQueries(1, &_primGenQuery);
   }
 
   QGroupBox* createDisplayGroupBox(){
@@ -637,29 +632,23 @@ public:
     return dock;
   }
 
-  virtual void connectToMainWindow(MainWindow *mw){
-    QObject::connect(mw, static_cast<void (MainWindow::*)(const QString&)>(&MainWindow::loadedHeightMap),
-                     [this, mw](const QString& filename) {
+  virtual void connectToMainWindow(MainWindow *mw) {
+    QObject::connect(mw, static_cast<void (MainWindow::*)(const QString &)>(&MainWindow::loadedHeightMap),
+                     [this, mw](const QString &filename) {
                        try {
                          _terrain.setHeightMap(filename);
                          _defaultCamSpeed = _terrain.getSize().norm() / 6000.f;
                          _camera->setSpeed(_defaultCamSpeed);
                        } catch (const std::exception &e) {
-                         QMessageBox::about(mw, "Error while loading heightmap", "Unable to load the image file located at " + filename);
+                         QMessageBox::about(mw, "Error while loading heightmap",
+                                            "Unable to load the image file located at " + filename);
                          return;
                        }
+                    });
+    QObject::connect(mw, static_cast<void (MainWindow::*)(const QImage &)>(&MainWindow::loadedTexture),
+                     [this](const QImage &im) {
+                       this->_terrain.setTexture(im);
                      });
-    /* QObject::connect(mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedHeightMap), */
-    /* 		     [this](const QImage& im) { */
-    /* 		       _terrain.setHeightMap(im); */
-    /*        _defaultCamSpeed = _terrain.getSize().norm() / 6000.f; */
-    /*        _camera->setSpeed(_defaultCamSpeed); */
-    /* 		     }); */
-
-    QObject::connect(mw, static_cast<void (MainWindow::*)(const QImage&)>(&MainWindow::loadedTexture),
-		     [this](const QImage& im) {
-		       this->_terrain.setTexture(im);
-		     });
     _mainWindow = mw;
   }
 
@@ -732,6 +721,9 @@ public:
         if (!_camera->grabedToGround())
           _camera->setUpOffset(0);
         break;
+      case Qt::Key_N:
+        _showNormals = !_showNormals;
+        break;
       default:break;
     }
   }
@@ -774,6 +766,7 @@ private:
   QOpenGLShaderProgram *_simpleTessPrg = nullptr;
   QOpenGLShaderProgram *_simpleInstTessPrg = nullptr;
   QOpenGLShaderProgram *_fillPrg = nullptr;
+  QOpenGLShaderProgram *_normalPrg = nullptr;
   QOpenGLTexture *_colormap = nullptr;
   Terrain _terrain;
   DirectionalLight _light;
@@ -790,17 +783,19 @@ private:
   float _shininessCoef = 2.f;
 
   float _distFog = 1400.f;
-  Vector3f _fogColor = Vector3f(0.3058823529411765,0.3058823529411765,0.3058823529411765);
+  Vector3f _fogColor = Vector3f(0.3058823529411765f,0.3058823529411765f,0.3058823529411765f);
 
   TexturingMode _texMode = TexturingMode::TEXTURE;
   DrawMode _drawMode = DrawMode::FILL;
   CameraMode _cameraMode = CameraMode::FREE_FLY;
-  TessellationMethod _tessellationMethod = TessellationMethod::INSTANCIATION;
+  TessellationMethod _tessellationMethod = TessellationMethod::HARDWARE;
   TessellationMode _tessellationMode = TessellationMode::ADAPTATIVE_FROM_POV;
   AdaptativeMode _adaptativeTessellationMode = AdaptativeMode::CONTENT;
 
   float _defaultCamSpeed;
   bool _needShaderReloading;
+
+  bool _showNormals = false;
 
   bool intersectionFound = false;
   Eigen::Vector3f lineOrig;
@@ -808,6 +803,9 @@ private:
   Eigen::Vector3f lineInterPoint;
 
   MainWindow *_mainWindow;
+
+  GLuint _primGenQuery;
+  unsigned int _primGens = 0;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H
