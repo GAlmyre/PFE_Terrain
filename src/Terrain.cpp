@@ -45,49 +45,10 @@ void Terrain::init() {
     _instPatchIDBuffer[i]->create();
     _instPatchIDBuffer[i]->bind();
     _instPatchIDBuffer[i]->setUsagePattern(QOpenGLBuffer::StaticDraw);
-    _instPatchIDBuffer[i]->allocate(sizeof(unsigned int)*1);
     _instPatchIDBuffer[i]->release();
   }
 
   _instVertexArray.create();
-
-  _nbPatchs = 5;
-  
-  //creation of two patches
-    /*
-      p0-----p1
-      |   _/|
-      | _/  |
-      |/    |
-      p2-----p3
-      p0(0,1)
-      p1(1,1)
-      p2(0,0)
-      p3(1,0)
-    */
-  /*
-    //p0
-    _instPatchTransform.push_back(0);
-    _instPatchTransform.push_back(1);
-    //p2
-    _instPatchTransform.push_back(0);
-    _instPatchTransform.push_back(0);
-    //p1
-    _instPatchTransform.push_back(1);
-    _instPatchTransform.push_back(1);
-
-    //p1
-    _instPatchTransform.push_back(1);
-    _instPatchTransform.push_back(1);
-    //p2
-    _instPatchTransform.push_back(0);
-    _instPatchTransform.push_back(0);
-    //p3
-    _instPatchTransform.push_back(1);
-    _instPatchTransform.push_back(0);
-
-    _needPatchTransformSSBOUpdate = true;
-    //*/
 
   f->glGenTextures(1, &_heightMapGL);
 }
@@ -217,6 +178,44 @@ void Terrain::drawHardwareTessellation(QOpenGLShaderProgram &shader)
   if(_texture)   _texture->release();
 }
 
+void Terrain::computeTessellationLevels(const Matrix4f &MVP, const Vector2f &viewport, float factor){
+  Surface_mesh::Vertex_property<Vector3f> point = _baseMesh.get_vertex_property<Vector3f>("v:point");
+  Surface_mesh::Face_property<float> maxElevation = _baseMesh.face_property<float>("f:maxElevation");
+  _instPatchTessLevels.clear();
+  
+  for(Surface_mesh::Face f : _baseMesh.faces()){
+    Surface_mesh::Halfedge h = _baseMesh.halfedge(f);
+    Vector3f v0, v1, v2;
+    v0 = point[_baseMesh.to_vertex(h)];
+    h = _baseMesh.next_halfedge(h);
+    v1 = point[_baseMesh.to_vertex(h)];
+    h = _baseMesh.next_halfedge(h);
+    v2 = point[_baseMesh.to_vertex(h)];
+
+    Vector3f centerEdge0 = v1 + (v2 - v1) / 2.f;
+    Vector3f centerEdge1 = v2 + (v0 - v2) / 2.f;
+    Vector3f centerEdge2 = v0 + (v1 - v0) / 2.f;
+
+    // Triangle Barycenter
+    Vector3f center = 2.f / 3.f * (centerEdge0 - v0) + v0;
+    float elevation = maxElevation[f] * _heightScale;
+
+    Vector4f center4f(center.x(), center.y(), center.z(), 1.f);
+    Vector4f clip0 = MVP * center4f;
+    Vector4f clip1 = MVP * (center4f + Vector4f(0,elevation,0,0.f));//Vector4f(center.x(), center.y() + elevation, center.z(), 1.f);
+
+    
+    Vector2f ndc0 = Vector2f(clip0.x(), clip0.y()).array() / clip0.w() * viewport.array() * 0.5f;
+    Vector2f ndc1 = Vector2f(clip1.x(), clip1.y()).array() / clip1.w() * viewport.array() * 0.5f;
+    
+    float dist = (ndc1-ndc0).norm();
+
+    _instPatchTessLevels.push_back(std::max(0.f, std::min(dist, 64.f))*factor);
+    std::cout << "f : " << f.idx() << " lvl : " << std::max(0.f, std::min(dist, 64.f)) << std::endl;
+    
+  }
+}
+
 void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 {
   GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
@@ -228,10 +227,11 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
   shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
 
   //compute patch tess levels TODO
-  _instPatchTessLevels.clear();
-  for(unsigned int i=0; i<_nbPatchs; ++i){
-    _instPatchTessLevels.push_back(64);
-  }
+  // _instPatchTessLevels.clear();
+  // for(unsigned int i=0; i<_nbPatchs; ++i){
+  //   //_instPatchTessLevels.push_back(64);
+  // }
+
 
   //we fill the patchID buffers
   for(unsigned int i=0; i<NB_TESS_LEVELS; ++i){
@@ -256,9 +256,14 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
     f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instPatchTexTransformSSBO);
     f->glBufferData(GL_SHADER_STORAGE_BUFFER, _instPatchTexTransform.size()*sizeof(float), _instPatchTexTransform.data(), GL_DYNAMIC_COPY);
     f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, _instPatchTexTransformSSBO);
+    std::cout << "allocate : " << _nbPatchs << std::endl;
+    for(unsigned int patchIt=0; patchIt < NB_TESS_LEVELS; ++patchIt){
+      _instPatchIDBuffer[patchIt]->bind();
+      _instPatchIDBuffer[patchIt]->allocate(_instPatchID[patchIt].data(), sizeof(unsigned int)*_nbPatchs);
+    }
     _needPatchTransformSSBOUpdate = false;
   }
-  std::cout << "display" << std::endl;
+  //std::cout << "display" << std::endl;
 
   //we copy patch tessellation levels to the ssbo
   f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instPatchTessLevelsSSBO);
@@ -279,9 +284,9 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 
     _instPatchIDBuffer[patchIt]->bind();
 
-    //_instPatchIDBuffer[patchIt]->write(0, _instPatchID[patchIt].data(), sizeof(unsigned int) * _instPatchID[patchIt].size());
+    _instPatchIDBuffer[patchIt]->write(0, _instPatchID[patchIt].data(), sizeof(unsigned int) * _instPatchID[patchIt].size());
     //TODO check if it is more expensive to use allocate than write : if so use allocate after each createGrid call to change the allocation according to the number of patchs
-    _instPatchIDBuffer[patchIt]->allocate(_instPatchID[patchIt].data(), sizeof(unsigned int)*_instPatchID[patchIt].size());
+    //_instPatchIDBuffer[patchIt]->allocate(_instPatchID[patchIt].data(), sizeof(unsigned int)*_instPatchID[patchIt].size());
 
     int patchID_loc = shader.attributeLocation("patch_ID");
     if(patchID_loc>=0) {
@@ -294,7 +299,7 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 
     f->glUniform1ui(shader.uniformLocation("patchLevel"), patchIt);
 
-    std::cout << "test test" << _patchNbElements[patchIt] << " " << _instPatchID[patchIt].size() << std::endl;
+    //std::cout << "test test" << _patchNbElements[patchIt] << " " << _instPatchID[patchIt].size() << std::endl;
 
 
     f->glDrawArraysInstanced(GL_TRIANGLES, 0, _patchNbElements[patchIt], _instPatchID[patchIt].size());

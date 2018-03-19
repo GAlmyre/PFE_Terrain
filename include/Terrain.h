@@ -43,6 +43,7 @@ public:
 
   void createGrid(float width, float height, unsigned int nbCols, unsigned int nbRows, bool quads);
   void generateTessellatedPatches();
+  void computeTessellationLevels(const Eigen::Matrix4f &MVP, const Eigen::Vector2f &viewport, float factor);
   
 private:
   struct Vertex {

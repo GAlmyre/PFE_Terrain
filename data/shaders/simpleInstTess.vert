@@ -32,6 +32,7 @@ uniform mat4 model;
 
 uniform sampler2D heightmap;
 uniform float heightScale;
+uniform float LODfactor;
 
 uniform uint patchLevel;
 
@@ -102,7 +103,8 @@ void main()
   vec3 pos = vertexPosition(vtx_ID, patchTransformation, patchTexTransformation);
 
   float tessLevel = vertexTessLevel(patch_ID, vtx_ID);
-  
+  // 
+  // tessLevel = LODfactor*(tessLevel-prevLevel) + prevLevel;
   if(patchLevel != 0 && hasParents(vtx_ID)){
     float prevLevel = tessLevelConversion[patchLevel-1];
     float interpolation = (tessLevel-prevLevel)/(tessLevelConversion[patchLevel]-prevLevel);

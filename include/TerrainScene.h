@@ -219,6 +219,7 @@ public:
       _f->glUniform3fv(_simpleInstTessPrg->uniformLocation("TessLevelOuter"), 1, outerLvl.data());
       _f->glUniform1f(_simpleInstTessPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
       _f->glUniform1f(_simpleInstTessPrg->uniformLocation("heightScale"), _terrain.heightScale());
+      _f->glUniform1f(_simpleInstTessPrg->uniformLocation("LODfactor"), _adaptativeFactor);
       _f->glUniform2fv(_simpleInstTessPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
 
       _colormap->bind(3);
@@ -234,6 +235,8 @@ public:
         /* TODO : Implement Placement of point on scene */
         _f->glUniform3fv(_simpleInstTessPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
       }
+      Matrix4f VPMat = _camera->projectionMatrix()*_camera->viewMatrix().matrix();
+      _terrain.computeTessellationLevels(VPMat, _camera->viewport(), _adaptativeFactor);
 
       if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
 	_f->glDepthFunc(GL_LESS);
@@ -558,7 +561,7 @@ public:
 		       _adaptativeTessellationMode = (AdaptativeMode)data;
 		     });
 
-    VariableOption * adaptativeFactor = new VariableOption("Adaptative LOD factor", 1, 0.05, 10, 0.05);
+    VariableOption * adaptativeFactor = new VariableOption("Adaptative LOD factor", 1, 0, 1, 0.01);
     QObject::connect(adaptativeFactor, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
 		     [this](double val){
 		       _adaptativeFactor = val;
