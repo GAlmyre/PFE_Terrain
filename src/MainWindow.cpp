@@ -55,6 +55,27 @@ void MainWindow::createActions() {
   _exitAction = new QAction(tr("&Exit"), this);
   _exitAction->setStatusTip(tr("Exit the program"));
   connect(_exitAction, SIGNAL(triggered()), QCoreApplication::instance(), SLOT(quit()));
+
+  _toggleBenchAction = new QAction(tr("&Benchmark"), this);
+  _toggleBenchAction->setStatusTip(tr("Enable/disable Benchmarking"));
+  _toggleBenchAction->setCheckable(true);
+  connect(_toggleBenchAction, &QAction::toggled, [this] (bool checked) {
+    emit toggledBench(checked);
+  });
+
+  _toggleNormalsAction = new QAction(tr("&Show Normals"), this);
+  _toggleNormalsAction->setStatusTip(tr("Show normals for debug purpose"));
+  _toggleNormalsAction->setCheckable(true);
+  connect(_toggleNormalsAction, &QAction::toggled, [this] (bool checked) {
+    emit toggledNormals(checked);
+  });
+
+  _toggleGradAction = new QAction(tr("&Grab camera on ground"), this);
+  _toggleGradAction->setStatusTip(tr("Make the camera flying on top of the ground"));
+  _toggleGradAction->setCheckable(true);
+  connect(_toggleGradAction, &QAction::toggled, [this] (bool checked) {
+    emit toggledGrab(checked);
+  });
 }
 
 void MainWindow::createMenu() {
@@ -64,6 +85,11 @@ void MainWindow::createMenu() {
   _fileMenu->addAction(_loadTextureAction);
   _fileMenu->addSeparator();
   _fileMenu->addAction(_exitAction);
+
+  _toolsMenu = menuBar()->addMenu(tr("&Tools"));
+  _toolsMenu->addAction(_toggleBenchAction);
+  _toolsMenu->addAction(_toggleNormalsAction);
+  _toolsMenu->addAction(_toggleGradAction);
 }
 
 // Handles the opening of a heightmap

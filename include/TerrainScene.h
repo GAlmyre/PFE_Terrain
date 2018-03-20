@@ -120,12 +120,15 @@ public:
     }
 
     if (_isBenchmarking && timeAvailable && primAvailable) {
-      _benchmark.emplace_back(_primGens, _gpuTime / 1000000.0, _cpuTime.count());
+      _benchmark.emplace_back(_primGens, _gpuTime / 1000000.0, _cpuTime.count(), _lodTime.count());
 
-      _primGenLabel->setText(QString::number(_primGens));
-      _gpuTimeLabel->setText(QString::number(_gpuTime / 1000000.0, 'f', 6) + "ms");
-      _cpuTimeLabel->setText(QString::number(_cpuTime.count(), 'f', 6) + " ms");
-      _benchmarkFrame->update();
+      if (_benchmark.size() % 10 == 0) {
+        _primGenLabel->setText(QString::number(_primGens));
+        _gpuTimeLabel->setText(QString::number(_gpuTime / 1000000.0, 'f', 3) + " ms");
+        _cpuTimeLabel->setText(QString::number(_cpuTime.count(), 'f', 3) + " ms");
+        _lodTimeLabel->setText(QString::number(_lodTime.count(), 'f', 3) + " ms");
+        _benchmarkFrame->update();
+      }
     }
 
     // Begin GPU Time count
@@ -190,12 +193,16 @@ public:
       _f->glUniform3fv(currentPrg->uniformLocation("TessDistRefPos"), 1, _camera->position().data());
     }
 
-    /* Draw */
+    /* LOD Computation */
+    auto lodTimeStart = std::chrono::high_resolution_clock::now();
     if(_tessellationMethod == INSTANCIATION) {
       Matrix4f VPMat = _camera->projectionMatrix()*_camera->viewMatrix().matrix();
       _terrain.computeTessellationLevels(VPMat, _camera->viewport(), _adaptativeFactor);
     }
+    _lodTime = std::chrono::high_resolution_clock::now() - lodTimeStart;
 
+
+    /* Draw */
     if(_drawMode == DrawMode::FILL || _drawMode == DrawMode::FILL_AND_WIREFRAME){
       _f->glDepthFunc(GL_LESS);
       _f->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -310,7 +317,6 @@ public:
   void clean() override {
     delete _simplePrg;
     delete _colormap;
-    delete _benchmarkFrame;
     _terrain.clean();
 
     _f->glDeleteQueries(1, &_primGenQuery);
@@ -635,6 +641,7 @@ public:
   virtual QDockWidget *createDock() {
     QDockWidget *dock = new QDockWidget("Options");
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dock->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
     QScrollArea *scrollArea = new QScrollArea(dock);
     scrollArea->setWidgetResizable(true);
     QFrame *frame = new QFrame;
@@ -679,20 +686,80 @@ public:
                      [this](const QImage &im) {
                        this->_terrain.setTexture(im);
                      });
+
+    QObject::connect(mw, &MainWindow::toggledNormals,
+                     [this](bool checked) {
+                       _showNormals = checked;
+                     });
+
+    QObject::connect(mw, &MainWindow::toggledGrab,
+                     [this](bool checked) {
+                       _camera->gradToGround(checked);
+                       if (!_camera->grabedToGround())
+                         _camera->setUpOffset(0);
+                     });
+
+    QObject::connect(mw, &MainWindow::toggledBench,
+                     [this](bool checked) {
+                       if (checked) {
+                         _benchmarkFrame->show();
+                       } else {
+                         _benchmarkFrame->hide();
+                       }
+                       _isBenchmarking = checked;
+                     });
+
     _mainWindow = mw;
 
     // Create Benchmark window
-    _benchmarkFrame = new QFrame;
-    _benchmarkFrame->setWindowFlags(Qt::WindowStaysOnTopHint);
-    QFormLayout *formLayout = new QFormLayout;
+    _benchmarkFrame = new QFrame(_mainWindow);
+    _benchmarkFrame->setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window | Qt::CustomizeWindowHint | Qt::WindowTitleHint);
+    _benchmarkFrame->setWindowTitle("Benchmarking");
+
     _primGenLabel = new QLabel(_benchmarkFrame);
     _gpuTimeLabel = new QLabel(_benchmarkFrame);
     _cpuTimeLabel = new QLabel(_benchmarkFrame);
+    _lodTimeLabel = new QLabel(_benchmarkFrame);
+
+    QVBoxLayout *hLayout = new QVBoxLayout(_benchmarkFrame);
+
+    QFormLayout *formLayout = new QFormLayout;
     formLayout->addRow("Triangles", _primGenLabel);
     formLayout->addRow("GPU Time", _gpuTimeLabel);
     formLayout->addRow("CPU Time", _cpuTimeLabel);
-    _benchmarkFrame->setLayout(formLayout);
-    _benchmarkFrame->setWindowTitle("Benchmarking");
+    formLayout->addRow("LOD Time", _lodTimeLabel);
+
+    QHBoxLayout *vLayout = new QHBoxLayout;
+    QPushButton *buttonStop = new QPushButton("Close", _benchmarkFrame);
+    QPushButton *buttonSave = new QPushButton("Record", _benchmarkFrame);
+    QLabel *savedLabel = new QLabel("Not Recording", _benchmarkFrame);
+
+    buttonSave->setCheckable(true);
+    vLayout->addWidget(buttonStop);
+    vLayout->addWidget(buttonSave);
+
+    buttonStop->connect(buttonStop, &QAbstractButton::clicked, [this] {
+      _isBenchmarking = false;
+      _benchmarkFrame->hide();
+      _benchmark.clear();
+      _mainWindow->_toggleBenchAction->setChecked(false);
+    });
+    buttonStop->connect(buttonSave, &QAbstractButton::toggled, [=] (bool checked) {
+      if (checked) {
+        savedLabel->setText("Recording");
+        buttonSave->setText("Stop");
+        _benchmark.clear();
+      } else {
+        QString fileName = writeBenchmarkData();
+        savedLabel->setText("Saved at :" + fileName);
+        buttonSave->setText("Record");
+        _benchmark.clear();
+      }
+    });
+
+    hLayout->addLayout(formLayout);
+    hLayout->addLayout(vLayout);
+    hLayout->addWidget(savedLabel);
   }
 
   virtual void resize(int width, int height) {
@@ -760,22 +827,13 @@ public:
         _camera->processKeyPress(FreeFlyCamera::KEY_DOWN);
         break;
       case Qt::Key_G:
-        _camera->gradToGround(!_camera->grabedToGround());
-        if (!_camera->grabedToGround())
-          _camera->setUpOffset(0);
+        _mainWindow->_toggleGradAction->toggle();
         break;
       case Qt::Key_N:
-        _showNormals = !_showNormals;
+        _mainWindow->_toggleNormalsAction->toggle();
         break;
       case Qt::Key_B:
-        if (_isBenchmarking) {
-          _benchmarkFrame->hide();
-          writeBenchmarkData();
-          _benchmark.clear();
-        } else {
-          _benchmarkFrame->show();
-        }
-        _isBenchmarking = !_isBenchmarking;
+        _mainWindow->_toggleBenchAction->toggle();
       default:break;
     }
   }
@@ -813,8 +871,9 @@ public:
     _camera->stopMovement();
   }
 
-  void writeBenchmarkData() {
-    QString fileName = "../data/bench/" + QDateTime::currentDateTime().toString(QString("yyyy_MM_dd_hh_mm_ss")) + ".txt";
+  QString writeBenchmarkData() {
+    QString mode = (_tessellationMethod == HARDWARE) ? "h" : "i";
+    QString fileName = "../data/bench/" + mode + "_" + QDateTime::currentDateTime().toString(QString("yyyy_MM_dd_hh_mm_ss")) + ".txt";
 
     QFile file(fileName);
     if (file.open(QIODevice::WriteOnly)) {
@@ -823,12 +882,12 @@ public:
       out.setRealNumberPrecision(6);
 
       for (auto &stat : _benchmark) {
-        out << stat.primitiveGenerated << ", " << stat.gpuTime << ", " << stat.cpuTime << "\n";
+        out << stat.primitiveGenerated << ", " << stat.gpuTime << ", " << stat.cpuTime << ", " << stat.lodTime << "\n";
       }
 
       file.close();
     }
-
+    return fileName;
   }
 
 private:
@@ -877,16 +936,18 @@ private:
   /* Benchmarking */
   GLuint _primGenQuery, _gpuTimeQuery;
   struct Stats {
-    Stats(unsigned int primitiveGenerated, double gpuTime, double cpuTime)
-            : primitiveGenerated(primitiveGenerated), gpuTime(gpuTime), cpuTime(cpuTime) {}
+    Stats(unsigned int primitiveGenerated, double gpuTime, double cpuTime, double lodTime)
+            : primitiveGenerated(primitiveGenerated), gpuTime(gpuTime), cpuTime(cpuTime), lodTime(lodTime) {}
 
     unsigned int primitiveGenerated;
     double gpuTime;
     double cpuTime;
+    double lodTime;
   };
   unsigned int _primGens = 0;
   unsigned int _gpuTime = 0;
   std::chrono::duration<double, std::milli> _cpuTime;
+  std::chrono::duration<double, std::milli> _lodTime;
   std::vector<Stats> _benchmark;
   bool _isBenchmarking = false;
 
@@ -894,6 +955,7 @@ private:
   QLabel *_primGenLabel = nullptr;
   QLabel *_gpuTimeLabel = nullptr;
   QLabel *_cpuTimeLabel = nullptr;
+  QLabel *_lodTimeLabel = nullptr;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H

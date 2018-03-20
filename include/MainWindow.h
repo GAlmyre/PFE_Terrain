@@ -32,12 +32,18 @@ private:
   Ui::MainWindow *_ui;
   Viewer* _viewer;
   QMenu* _fileMenu;
+  QMenu *_toolsMenu;
   QAction* _loadHeightmapAction;
   QAction* _loadTextureAction;
   QAction* _exitAction;
 
   void createMenu();
   void createActions();
+
+public:
+  QAction *_toggleNormalsAction;
+  QAction *_toggleGradAction;
+  QAction *_toggleBenchAction;
 
 private slots:
   void loadHeightMap();
@@ -47,6 +53,9 @@ private slots:
   void loadedHeightMap(const QImage&);
   void loadedHeightMap(const QString&);
   void loadedTexture(const QImage&);
+  void toggledNormals(bool);
+  void toggledGrab(bool);
+  void toggledBench(bool);
 };
 
 #endif // MAINWINDOW_HPP
