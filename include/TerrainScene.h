@@ -122,13 +122,11 @@ public:
     if (_isBenchmarking && timeAvailable && primAvailable) {
       _benchmark.emplace_back(_primGens, _gpuTime / 1000000.0, _cpuTime.count(), _lodTime.count());
 
-      if (_benchmark.size() % 10 == 0) {
-        _primGenLabel->setText(QString::number(_primGens));
-        _gpuTimeLabel->setText(QString::number(_gpuTime / 1000000.0, 'f', 3) + " ms");
-        _cpuTimeLabel->setText(QString::number(_cpuTime.count(), 'f', 3) + " ms");
-        _lodTimeLabel->setText(QString::number(_lodTime.count(), 'f', 3) + " ms");
-        _benchmarkFrame->update();
-      }
+      _primGenLabel->setText(QString::number(_primGens));
+      _gpuTimeLabel->setText(QString::number(_gpuTime / 1000000.0, 'f', 3) + " ms");
+      _cpuTimeLabel->setText(QString::number(_cpuTime.count(), 'f', 3) + " ms");
+      _lodTimeLabel->setText(QString::number(_lodTime.count(), 'f', 3) + " ms");
+      _benchmarkFrame->update();
     }
 
     // Begin GPU Time count
