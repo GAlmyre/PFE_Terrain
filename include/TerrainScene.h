@@ -5,6 +5,7 @@
 #include "Terrain.h"
 #include "DirectionalLight.h"
 #include "Sphere.h"
+#include "BenchmarkWindow.h"
 
 #include "VariableOption.h"
 #include "ComboBoxOption.h"
@@ -108,26 +109,20 @@ public:
     }
 
     /* Benchmarking */
-    GLint primAvailable, timeAvailable;
-    _f->glGetQueryObjectiv(_primGenQuery, GL_QUERY_RESULT_AVAILABLE, &primAvailable);
-    if (primAvailable) {
-      _f->glGetQueryObjectuiv(_primGenQuery, GL_QUERY_RESULT, &_primGens);
-    }
+    _f->glGetQueryObjectuiv(_primGenQuery, GL_QUERY_RESULT, &_primGens);
+    _f->glGetQueryObjectuiv(_gpuTimeQuery, GL_QUERY_RESULT, &_gpuTime);
+//    GLint primAvailable, timeAvailable;
+//    _f->glGetQueryObjectiv(_primGenQuery, GL_QUERY_RESULT_AVAILABLE, &primAvailable);
+//    if (primAvailable) {
+//      _f->glGetQueryObjectuiv(_primGenQuery, GL_QUERY_RESULT, &_primGens);
+//    }
+//
+//    _f->glGetQueryObjectiv(_gpuTimeQuery, GL_QUERY_RESULT_AVAILABLE, &timeAvailable);
+//    if (timeAvailable) {
+//      _f->glGetQueryObjectuiv(_gpuTimeQuery, GL_QUERY_RESULT, &_gpuTime); // GPU time in ns
+//    }
 
-    _f->glGetQueryObjectiv(_gpuTimeQuery, GL_QUERY_RESULT_AVAILABLE, &timeAvailable);
-    if (timeAvailable) {
-      _f->glGetQueryObjectuiv(_gpuTimeQuery, GL_QUERY_RESULT, &_gpuTime); // GPU time in ns
-    }
-
-    if (_isBenchmarking && timeAvailable && primAvailable) {
-      _benchmark.emplace_back(_primGens, _gpuTime / 1000000.0, _cpuTime.count(), _lodTime.count());
-
-      _primGenLabel->setText(QString::number(_primGens));
-      _gpuTimeLabel->setText(QString::number(_gpuTime / 1000000.0, 'f', 3) + " ms");
-      _cpuTimeLabel->setText(QString::number(_cpuTime.count(), 'f', 3) + " ms");
-      _lodTimeLabel->setText(QString::number(_lodTime.count(), 'f', 3) + " ms");
-      _benchmarkFrame->update();
-    }
+    _bench->addNewData(BenchmarkWindow::Data(_primGens, _gpuTime / 1000000.0, _cpuTime.count(), _lodTime.count()));
 
     // Begin GPU Time count
     _f->glBeginQuery(GL_TIME_ELAPSED, _gpuTimeQuery);
@@ -697,67 +692,9 @@ public:
                          _camera->setUpOffset(0);
                      });
 
-    QObject::connect(mw, &MainWindow::toggledBench,
-                     [this](bool checked) {
-                       if (checked) {
-                         _benchmarkFrame->show();
-                       } else {
-                         _benchmarkFrame->hide();
-                       }
-                       _isBenchmarking = checked;
-                     });
-
     _mainWindow = mw;
 
-    // Create Benchmark window
-    _benchmarkFrame = new QFrame(_mainWindow);
-    _benchmarkFrame->setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window | Qt::CustomizeWindowHint | Qt::WindowTitleHint);
-    _benchmarkFrame->setWindowTitle("Benchmarking");
-
-    _primGenLabel = new QLabel(_benchmarkFrame);
-    _gpuTimeLabel = new QLabel(_benchmarkFrame);
-    _cpuTimeLabel = new QLabel(_benchmarkFrame);
-    _lodTimeLabel = new QLabel(_benchmarkFrame);
-
-    QVBoxLayout *hLayout = new QVBoxLayout(_benchmarkFrame);
-
-    QFormLayout *formLayout = new QFormLayout;
-    formLayout->addRow("Triangles", _primGenLabel);
-    formLayout->addRow("GPU Time", _gpuTimeLabel);
-    formLayout->addRow("CPU Time", _cpuTimeLabel);
-    formLayout->addRow("LOD Time", _lodTimeLabel);
-
-    QHBoxLayout *vLayout = new QHBoxLayout;
-    QPushButton *buttonStop = new QPushButton("Close", _benchmarkFrame);
-    QPushButton *buttonSave = new QPushButton("Record", _benchmarkFrame);
-    QLabel *savedLabel = new QLabel("Not Recording", _benchmarkFrame);
-
-    buttonSave->setCheckable(true);
-    vLayout->addWidget(buttonStop);
-    vLayout->addWidget(buttonSave);
-
-    buttonStop->connect(buttonStop, &QAbstractButton::clicked, [this] {
-      _isBenchmarking = false;
-      _benchmarkFrame->hide();
-      _benchmark.clear();
-      _mainWindow->_toggleBenchAction->setChecked(false);
-    });
-    buttonStop->connect(buttonSave, &QAbstractButton::toggled, [=] (bool checked) {
-      if (checked) {
-        savedLabel->setText("Recording");
-        buttonSave->setText("Stop");
-        _benchmark.clear();
-      } else {
-        QString fileName = writeBenchmarkData();
-        savedLabel->setText("Saved at :" + fileName);
-        buttonSave->setText("Record");
-        _benchmark.clear();
-      }
-    });
-
-    hLayout->addLayout(formLayout);
-    hLayout->addLayout(vLayout);
-    hLayout->addWidget(savedLabel);
+    _bench = new BenchmarkWindow(_mainWindow, _mainWindow);
   }
 
   virtual void resize(int width, int height) {
@@ -869,25 +806,6 @@ public:
     _camera->stopMovement();
   }
 
-  QString writeBenchmarkData() {
-    QString mode = (_tessellationMethod == HARDWARE) ? "h" : "i";
-    QString fileName = "../data/bench/" + mode + "_" + QDateTime::currentDateTime().toString(QString("yyyy_MM_dd_hh_mm_ss")) + ".txt";
-
-    QFile file(fileName);
-    if (file.open(QIODevice::WriteOnly)) {
-      QTextStream out(&file);
-      out.setRealNumberNotation(QTextStream::FixedNotation);
-      out.setRealNumberPrecision(6);
-
-      for (auto &stat : _benchmark) {
-        out << stat.primitiveGenerated << ", " << stat.gpuTime << ", " << stat.cpuTime << ", " << stat.lodTime << "\n";
-      }
-
-      file.close();
-    }
-    return fileName;
-  }
-
 private:
   QOpenGLShaderProgram *_simplePrg = nullptr;
   QOpenGLShaderProgram *_simpleTessPrg = nullptr;
@@ -948,6 +866,8 @@ private:
   std::chrono::duration<double, std::milli> _lodTime;
   std::vector<Stats> _benchmark;
   bool _isBenchmarking = false;
+
+  BenchmarkWindow *_bench;
 
   QFrame *_benchmarkFrame = nullptr;
   QLabel *_primGenLabel = nullptr;

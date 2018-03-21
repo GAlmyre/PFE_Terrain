@@ -43,6 +43,10 @@ class VariableOption : public QWidget {
     QObject::connect(_spinBox, SIGNAL(valueChanged(double)),
 		     this, SLOT(spinBoxValueChanged(double)));
   }
+
+  double value() {
+    return _spinBox->value();
+  }
   
   private slots :
     void sliderValueChanged(int val) {

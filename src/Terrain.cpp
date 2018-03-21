@@ -12,10 +12,8 @@ using namespace cimg_library;
 
 Terrain::Terrain()
   : _pixelsPerPatch(64), _quadPatches(false), _heightMap(nullptr), _texture(nullptr),
-    _width(0), _height(0), _rows(0), _cols(0), _heightScale(50.f)
-{
-  //updateBaseMesh();
-}
+    _width(0), _height(0), _rows(0), _cols(0), _heightScale(50.f), _heightFactor(50.f)
+{}
 
 void Terrain::init() {
   GLFuncs *f = QOpenGLContext::currentContext()->versionFunctions<GLFuncs>();
@@ -180,7 +178,7 @@ void Terrain::computeTessellationLevels(const Matrix4f &MVP, const Vector2f &vie
 
     // Triangle Barycenter
     Vector3f center = 2.f / 3.f * (centerEdge0 - v0) + v0;
-    float elevation = maxElevation[f] * _heightScale;
+    float elevation = maxElevation[f] * _heightFactor;
 
     Vector4f center4f(center.x(), center.y(), center.z(), 1.f);
     Vector4f clip0 = MVP * center4f;
@@ -309,6 +307,7 @@ void Terrain::updateBaseMesh()
     _height = _heightMapCImg.height();
     _cols = _width / _pixelsPerPatch;
     _rows = _height / _pixelsPerPatch;
+    _heightFactor = _heightScale * getSize().norm() / 900.f;
 
     if(_width % _pixelsPerPatch)
       _cols++;
@@ -323,6 +322,8 @@ void Terrain::updateBaseMesh()
     _height = 5;
     _rows = 10;
     _cols = 10;
+    _heightFactor = _heightScale * getSize().norm() / 900.f;
+
     createGrid(_width, _height, _cols, _rows, false);
   }
 }
@@ -466,8 +467,6 @@ void Terrain::createGrid(float width, float height, unsigned int nbCols, unsigne
   fillVertexArrayBuffer();
 
   _needPatchTransformSSBOUpdate = true;
-
-
 }
 
 void Terrain::generateTessellatedPatches(){
@@ -635,7 +634,7 @@ void Terrain::clean() {
 bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float &tHit) {
   Vector3f invDir = dir.cwiseInverse();
   const Vector3f min(0.f, 0.f, 0.f);
-  const Vector3f max(_width, _heightScale, _height);
+  const Vector3f max(_width, _heightFactor, _height);
 
   /* First, we find the intersection between the ray and the terrain bounding box */
   float tmin, tmax, tymin, tymax, tzmin, tzmax;
@@ -688,12 +687,12 @@ bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float &tHit) 
 
   // If we intersect at the begining of the BBox, we are under the terrain, don't consider it as an intersection
   Vector3f p = orig + dir * (tmin + deltat);
-  if (p.y() < _heightMapCImg((int) p.x(), (int) p.z(), 0) * _heightScale)
+  if (p.y() < _heightMapCImg((int) p.x(), (int) p.z(), 0) * _heightFactor)
     return false;
 
   for (float t = tmin + deltat; t <= tmax - deltat; t += deltat) {
     Vector3f p = orig + dir * t;
-    float h = _heightMapCImg((int) p.x(), (int) p.z(), 0) * _heightScale;
+    float h = _heightMapCImg((int) p.x(), (int) p.z(), 0) * _heightFactor;
     if (p.y() < h) {
       tHit = t - 0.5 * deltat;
       return true;
@@ -704,33 +703,16 @@ bool Terrain::intersect(Eigen::Vector3f orig, Eigen::Vector3f dir, float &tHit) 
 
 void Terrain::setHeightScale(float heightScale) {
   _heightScale = heightScale;
+  _heightFactor = _heightScale * getSize().norm() / 900.f;
 }
 
 float Terrain::heightScale() {
-  return _heightScale;
+  return _heightFactor;
 }
 
 float Terrain::getHeight(float x, float z, bool scaled) {
   float val = _heightMapCImg.linear_atXY(x, z);
-  return scaled ? val * _heightScale : val;
-
-//  int x1 = std::max(std::min(static_cast<int>(x), _width - 2), 0);
-//  int z1 = std::max(std::min(static_cast<int>(z), _height - 2), 0);
-//
-//  float Q11 = qRed(_heightMapImage.pixel(x1,     z1));
-//  float Q21 = qRed(_heightMapImage.pixel(x1 + 1, z1));
-//  float Q12 = qRed(_heightMapImage.pixel(x1,     z1 + 1));
-//  float Q22 = qRed(_heightMapImage.pixel(x1 + 1, z1 + 1));
-//
-//  float dx = std::min(std::max(x - x1, 0.f), 1.f);
-//  float dz = std::min(std::max(z - z1, 0.f), 1.f);
-//
-//  float R1 = Q11 * (1.f - dx) + Q21 * dx;
-//  float R2 = Q12 * (1.f - dx) + Q22 * dx;
-//
-//  float P = R1 * (1.f - dz) + R2 * dz;
-//
-//  return (scaled ? P * _heightScale : P) / 255.f;
+  return scaled ? val * _heightFactor : val;
 }
 
 bool Terrain::coordsInTerrain(float x, float z) {

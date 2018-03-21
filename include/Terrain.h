@@ -64,6 +64,7 @@ private:
   bool _quadPatches;
   int _width, _height, _rows, _cols;
   float _heightScale;
+  float _heightFactor;
 
   //##### instanciation #####
 
