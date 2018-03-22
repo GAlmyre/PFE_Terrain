@@ -37,8 +37,6 @@ private:
   std::vector<Data> _benchmark;
   Data _currentData;
 
-  QFileDialog *_saveDialog;
-
 signals:
     void newData(const Data &);
 };

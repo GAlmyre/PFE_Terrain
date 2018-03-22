@@ -61,14 +61,6 @@ BenchmarkWindow::BenchmarkWindow(QWidget *parent, MainWindow *mainWindow)
     setVisible(checked);
     _benchmark.clear();
   });
-
-  _saveDialog = new QFileDialog(this);
-  _saveDialog->setFileMode(QFileDialog::AnyFile);
-  _saveDialog->setNameFilter(tr("Text Files (*.txt)"));
-  _saveDialog->setAcceptMode(QFileDialog::AcceptSave);
-  _saveDialog->setOption(QFileDialog::DontUseNativeDialog);
-  _saveDialog->setViewMode(QFileDialog::List);
-  _saveDialog->setDirectory("../data/bench/");
 }
 
 QString BenchmarkWindow::writeBenchmarkData() {
