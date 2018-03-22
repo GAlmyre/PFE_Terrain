@@ -572,7 +572,7 @@ public:
 		       _adaptativeTessellationMode = (AdaptativeMode)data;
 		     });
 
-    VariableOption * adaptativeFactor = new VariableOption("Adaptative LOD factor", 1, 0, 1, 0.01);
+    VariableOption * adaptativeFactor = new VariableOption("Adaptative LOD factor", 1, 0.01, 1, 0.01);
     QObject::connect(adaptativeFactor, static_cast<void (VariableOption::*)(double)>(&VariableOption::valueChanged),
 		     [this](double val){
 		       _adaptativeFactor = val;
