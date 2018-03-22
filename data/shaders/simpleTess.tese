@@ -40,9 +40,6 @@ void main(void){
 
     tes_out.viewDirection = -gl_Position.xyz;
 
-    // compute distance from view
-
-
     // Pass tess levels
     tes_out.tessLevel = gl_TessLevelInner[0];
 }

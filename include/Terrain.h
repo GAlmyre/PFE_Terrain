@@ -95,13 +95,6 @@ private:
 
   //hardware tessellation
   surface_mesh::Surface_mesh _baseMesh;
-
-
-
-  //instanciation of tessellated patches
-  /*
-    list of preprocessed tessellated patches levels
-   */
 };
 
 #endif //TERRAIN_H

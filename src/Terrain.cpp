@@ -191,8 +191,6 @@ void Terrain::computeTessellationLevels(const Matrix4f &MVP, const Vector2f &vie
     float dist = (ndc1-ndc0).norm();
 
     _instPatchTessLevels.push_back(std::max(0.f, std::min(dist, 64.f))*factor);
-    //std::cout << "f : " << f.idx() << " lvl : " << std::max(0.f, std::min(dist, 64.f)) << std::endl;
-    
   }
 }
 
@@ -205,13 +203,6 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
   if(_texture)   _texture->bind(1);
   shader.setUniformValue(shader.uniformLocation("heightmap"), 0);
   shader.setUniformValue(shader.uniformLocation("texturemap"), 1);
-
-  //compute patch tess levels TODO
-  // _instPatchTessLevels.clear();
-  // for(unsigned int i=0; i<_nbPatchs; ++i){
-  //   //_instPatchTessLevels.push_back(64);
-  // }
-
 
   //we fill the patchID buffers
   for(unsigned int i=0; i<NB_TESS_LEVELS; ++i){
@@ -243,7 +234,6 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
     }
     _needPatchTransformSSBOUpdate = false;
   }
-  //std::cout << "display" << std::endl;
 
   //we copy patch tessellation levels to the ssbo
   f->glBindBuffer(GL_SHADER_STORAGE_BUFFER, _instPatchTessLevelsSSBO);
@@ -251,8 +241,6 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
   f->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, _instPatchTessLevelsSSBO);
 
   for(int patchIt = 0; patchIt < NB_TESS_LEVELS; ++patchIt){
-    //std::cout << "test" << std::endl;
-
     _instVertexArray.bind();
     _instVertexIDBuffer[patchIt]->bind();
 
@@ -279,19 +267,12 @@ void Terrain::drawPatchInstanciation(QOpenGLShaderProgram &shader)
 
     f->glUniform1ui(shader.uniformLocation("patchLevel"), patchIt);
 
-    //std::cout << "test test" << _patchNbElements[patchIt] << " " << _instPatchID[patchIt].size() << std::endl;
-
-
     f->glDrawArraysInstanced(GL_TRIANGLES, 0, _patchNbElements[patchIt], _instPatchID[patchIt].size());
-
-
 
     if(vertexID_loc)
       shader.disableAttributeArray(vertexID_loc);
     _instVertexIDBuffer[patchIt]->release();
     _instVertexArray.release();
-
-    //std::cout << "test end" << std::endl;
   }
   _heightMap->release();
 

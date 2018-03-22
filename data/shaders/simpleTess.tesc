@@ -29,12 +29,13 @@ uniform sampler2D heightmap;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform float adaptativeFactor;
 
 #define ID gl_InvocationID
 
 float distanceLOD(vec3 p0, vec3 p1) {
     float d = distance(p0, p1) + 0.0001; // Avoid divide by 0
-    return min(100 * triEdgeSize / d, 64);
+    return min(100 * triEdgeSize / d, 64) * adaptativeFactor;
 }
 
 float viewspaceLOD(vec4 center, float radius) {
@@ -55,7 +56,7 @@ float viewspaceLOD(vec4 center, float radius) {
     // d = 1 -> no tesselation -> return 1
     // d = 64 -> tesselation ->return 64
 
-    return clamp(d / 30, 0, 64);
+    return clamp(d / 30, 0, 64) * adaptativeFactor;
 }
 
 float projectedLOD(vec3 point, float elevation) {
@@ -67,7 +68,7 @@ float projectedLOD(vec3 point, float elevation) {
 
     float dist = distance(ndc0, ndc1);
 
-    return clamp(dist, 0.f, 64.f);
+    return clamp(dist, 0.f, 64.f) * adaptativeFactor;
 }
 
 void main() {

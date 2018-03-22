@@ -43,7 +43,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e){
 }
 
 void MainWindow::createActions() {
-
   _loadHeightmapAction = new QAction(tr("&Load heightmap"), this);
   _loadHeightmapAction->setStatusTip(tr("Load the selected heightmap"));
   connect(_loadHeightmapAction, SIGNAL(triggered()), this, SLOT(loadHeightMap()));
@@ -79,7 +78,6 @@ void MainWindow::createActions() {
 }
 
 void MainWindow::createMenu() {
-
   _fileMenu = menuBar()->addMenu(tr("&File"));
   _fileMenu->addAction(_loadHeightmapAction);
   _fileMenu->addAction(_loadTextureAction);

@@ -95,44 +95,6 @@ Eigen::Vector3f FreeFlyCamera::right() const {
   return m_viewMatrix.linear().row(0);
 }
 
-void FreeFlyCamera::centerOnAABB(const AlignedBox<float, 3> &bBox, const Vector3f &dir) {
-//  Vector3f front;
-//  if (dir == Vector3f::Zero()) {
-//    front = m_front;
-//  } else {
-//    //Update Yaw and pitch
-//    front = dir;
-//    if (dir.y() != 0) {
-//      m_yaw = 90;
-//      m_pitch = dir.y() * 89;
-//    } else {
-//      if (dir.x() == 1) {
-//        m_yaw = 0;
-//      } else {
-//        m_yaw = 90 * dir.z() + 180 * dir.x();
-//      }
-//      m_pitch = 0;
-//    }
-//    updateCameraVectors();
-//  }
-//  Vector3f max = bBox.max();
-//  Vector3f center = bBox.center();
-//  Vector3f maxCentered = max - center;
-//  float radius = maxCentered.norm();
-//  float extRadius = radius;
-//
-//  float tanHalfFovy = m_tanHalfFovy;
-//  float tanHalfFovx = tanHalfFovy * m_screenRatio;
-//  float ry = extRadius / tanHalfFovy;
-//  float rx = extRadius / tanHalfFovx;
-//  float camRadius = std::max(ry, rx);
-//
-//  Vector3f camPos = -camRadius * front.normalized() + center;
-//
-//  m_position = camPos;
-//  m_movementSpeed = camRadius / 3.f;
-}
-
 void FreeFlyCamera::update(float dt)
 {
   // Update Position
@@ -207,17 +169,6 @@ void FreeFlyCamera::processMouseMove(int mouseX, int mouseY)
   m_mouseLastPos = mousePos;
 }
 
-void FreeFlyCamera::processMouseScroll(float yoffset) {
-//  if (m_zoom >= 1.0f && m_zoom <= 19.0f)
-//    m_zoom += yoffset * std::log((21.0f - m_zoom))  * 0.001;
-//  if (m_zoom <= 1.0f)
-//    m_zoom = 1.0f;
-//  if (m_zoom >= 19.0f)
-//    m_zoom = 19.0f;
-//
-//  calcProjection();
-}
-
 void FreeFlyCamera::stopMovement() {
   resetKeyStates();
   m_rotating = false;
@@ -273,4 +224,8 @@ bool FreeFlyCamera::grabedToGround() const {
 
 void FreeFlyCamera::gradToGround(bool grab) {
   m_grabbed = grab;
+}
+
+void FreeFlyCamera::processMouseScroll(float yoffset) {
+
 }

@@ -19,9 +19,6 @@ public:
   // Set camera direction
   void setDirection(const Eigen::Vector3f &direction);
 
-  //Centre la caméra sur une bounding box
-  void centerOnAABB(const Eigen::AlignedBox<float, 3> &bBox, const Eigen::Vector3f &dir = Eigen::Vector3f(0.f, 0.f, 0.f));
-
   // Throw a ray through screen
   void screenPosToRay(const Eigen::Vector2i &p, Eigen::Vector3f &orig, Eigen::Vector3f &dir) const override;
 
@@ -42,6 +39,7 @@ public:
   void processMouseRelease();
   void processMouseMove(int mouseX, int mouseY);
   void processMouseScroll(float yoffset);
+
   void stopMovement();
 
   void setMouseOffsetBufferSize(size_t size);

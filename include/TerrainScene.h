@@ -68,6 +68,7 @@ public:
       delete _fillPrg;
     if(_simpleInstTessPrg)
       delete _simpleInstTessPrg;
+
     //shader init
     _simplePrg = new QOpenGLShaderProgram();
     _simplePrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simple.vert");
@@ -97,8 +98,6 @@ public:
     _simpleInstTessPrg = new QOpenGLShaderProgram();
     _simpleInstTessPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/simpleInstTess.vert");
     _simpleInstTessPrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/simple.frag");
-    /* _simpleInstTessPrg->addShaderFromSourceFile(QOpenGLShader::Vertex, "../data/shaders/patchTessTest.vert"); */
-    /* _simpleInstTessPrg->addShaderFromSourceFile(QOpenGLShader::Fragment, "../data/shaders/patchTessTest.frag"); */
     _simpleInstTessPrg->link();
   }
 
@@ -110,17 +109,7 @@ public:
 
     /* Benchmarking */
     _f->glGetQueryObjectuiv(_primGenQuery, GL_QUERY_RESULT, &_primGens);
-    _f->glGetQueryObjectuiv(_gpuTimeQuery, GL_QUERY_RESULT, &_gpuTime);
-//    GLint primAvailable, timeAvailable;
-//    _f->glGetQueryObjectiv(_primGenQuery, GL_QUERY_RESULT_AVAILABLE, &primAvailable);
-//    if (primAvailable) {
-//      _f->glGetQueryObjectuiv(_primGenQuery, GL_QUERY_RESULT, &_primGens);
-//    }
-//
-//    _f->glGetQueryObjectiv(_gpuTimeQuery, GL_QUERY_RESULT_AVAILABLE, &timeAvailable);
-//    if (timeAvailable) {
-//      _f->glGetQueryObjectuiv(_gpuTimeQuery, GL_QUERY_RESULT, &_gpuTime); // GPU time in ns
-//    }
+    _f->glGetQueryObjectuiv(_gpuTimeQuery, GL_QUERY_RESULT, &_gpuTime); // GPU time in ns
 
     _bench->addNewData(BenchmarkWindow::Data(_primGens, _gpuTime / 1000000.0, _cpuTime.count(), _lodTime.count()));
 
@@ -174,6 +163,7 @@ public:
       _f->glUniform1f(currentPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
       _f->glUniform1f(currentPrg->uniformLocation("heightScale"), _terrain.heightScale());
       _f->glUniform2fv(currentPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
+      _f->glUniform1f(currentPrg->uniformLocation("adaptativeFactor"), _adaptativeFactor);
     }
 
     _f->glUniform1i(currentPrg->uniformLocation("tessMethod"),
@@ -265,6 +255,7 @@ public:
     _f->glUniform1f(_normalPrg->uniformLocation("triEdgeSize"), _terrain.getTriEdgeSize());
     _f->glUniform1f(_normalPrg->uniformLocation("heightScale"), _terrain.heightScale());
     _f->glUniform2fv(_normalPrg->uniformLocation("viewport"), 1, _camera->viewport().data());
+    _f->glUniform1f(_normalPrg->uniformLocation("adaptativeFactor"), _adaptativeFactor);
 
     if (_tessellationMode == TessellationMode::CONSTANT)
       _f->glUniform1i(_normalPrg->uniformLocation("tessMethod"), TessellationMode::CONSTANT);
@@ -549,9 +540,6 @@ public:
     tessellationLayout->addWidget(tessMode);
     tessellationLayout->addWidget(constantModeSubMenu);
     tessellationLayout->addWidget(adaptativeModeSubMenu);
-
-
-
 
     QVBoxLayout * constantModeLayout = new QVBoxLayout;
     constantModeLayout->setContentsMargins(0,0,0,0);
@@ -864,16 +852,8 @@ private:
   unsigned int _gpuTime = 0;
   std::chrono::duration<double, std::milli> _cpuTime;
   std::chrono::duration<double, std::milli> _lodTime;
-  std::vector<Stats> _benchmark;
-  bool _isBenchmarking = false;
 
   BenchmarkWindow *_bench;
-
-  QFrame *_benchmarkFrame = nullptr;
-  QLabel *_primGenLabel = nullptr;
-  QLabel *_gpuTimeLabel = nullptr;
-  QLabel *_cpuTimeLabel = nullptr;
-  QLabel *_lodTimeLabel = nullptr;
 };
 
 #endif //TERRAINTINTIN_TERRAINSCENE_H
