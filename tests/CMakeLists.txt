@@ -16,3 +16,9 @@ target_link_libraries (DirectionalLightTest
   Qt5::Widgets Qt5::Core Qt5::OpenGL Qt5::Test GL -L/usr/X11R6/lib -lm -lpthread -lX11
   )
 add_test (NAME DirectionalLightTest COMMAND DirectionalLightTest)
+
+add_executable (FreeFlyCameraTest FreeFlyCameraTest.cpp ../include/FreeFlyCamera.h ../src/FreeFlyCamera.cpp ../include/Camera.h ../src/Camera.cpp)
+target_link_libraries (FreeFlyCameraTest
+  Qt5::Widgets Qt5::Core Qt5::OpenGL Qt5::Test GL -L/usr/X11R6/lib -lm -lpthread -lX11
+  )
+add_test (NAME FreeFlyCameraTest COMMAND FreeFlyCameraTest)

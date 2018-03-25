@@ -9,7 +9,6 @@
 #include "Scene.h"
 #include "FreeFlyCamera.h"
 
-// This class will handle the rendering of the VEF it stores using openGL
 class Viewer : public QOpenGLWidget
 {
   Q_OBJECT

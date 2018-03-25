@@ -1,6 +1,5 @@
 #include <QtTest/QtTest>
 #include "DirectionalLight.h"
-#include "iostream"
 
 class TestDirectionalLight: public QObject
 {
