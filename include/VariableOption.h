@@ -47,6 +47,8 @@ class VariableOption : public QWidget {
   double value() {
     return _spinBox->value();
   }
+
+  
   
   private slots :
     void sliderValueChanged(int val) {

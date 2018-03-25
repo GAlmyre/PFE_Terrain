@@ -18,7 +18,7 @@ file(
   source_files
   src/*
   include/*
-)
+  )
 
 include_directories(ext/)
 include_directories(assets/)
@@ -30,6 +30,10 @@ include_directories(ext/CImg/)
 add_executable(
   TerrainTintin
   ${source_files}
-        include/utils.h include/Scene.h include/TerrainScene.h include/TessTestScene.h include/TessTerrainScene.h include/Sphere.h include/Camera.h src/Camera.cpp include/Trackball.h src/Trackball.cpp src/BenchmarkWindow.cpp include/BenchmarkWindow.h)
+  include/utils.h include/Scene.h include/TerrainScene.h include/TessTestScene.h include/TessTerrainScene.h include/Sphere.h include/Camera.h src/Camera.cpp include/Trackball.h src/Trackball.cpp src/BenchmarkWindow.cpp include/BenchmarkWindow.h)
 
 target_link_libraries(TerrainTintin Qt5::Widgets Qt5::Core Qt5::OpenGL GL -L/usr/X11R6/lib -lm -lpthread -lX11)
+
+enable_testing()
+add_subdirectory(tests)
+
