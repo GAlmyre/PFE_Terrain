@@ -10,3 +10,9 @@ target_link_libraries (VariableOptionTest
   Qt5::Widgets Qt5::Core Qt5::OpenGL Qt5::Test GL -L/usr/X11R6/lib -lm -lpthread -lX11
   )
 add_test (NAME VariableOptionTest COMMAND VariableOptionTest)
+
+add_executable (DirectionalLightTest DirectionalLightTest.cpp ../include/DirectionalLight.h ../src/DirectionalLight.cpp)
+target_link_libraries (DirectionalLightTest
+  Qt5::Widgets Qt5::Core Qt5::OpenGL Qt5::Test GL -L/usr/X11R6/lib -lm -lpthread -lX11
+  )
+add_test (NAME DirectionalLightTest COMMAND DirectionalLightTest)

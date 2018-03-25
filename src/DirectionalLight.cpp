@@ -3,7 +3,7 @@
 DirectionalLight::DirectionalLight() {}
 
 DirectionalLight::DirectionalLight(Eigen::Vector3f observerPosition, float distanceToObserver, float azimuth, float altitude, Eigen::Vector3f color)
-  :_observerPosition(observerPosition), _distToObserver(distanceToObserver), _color(color)
+  :_observerPosition(observerPosition), _distToObserver(distanceToObserver), _azimuth(azimuth), _altitude(altitude), _color(color)
 {
   computeDirection();
 }
