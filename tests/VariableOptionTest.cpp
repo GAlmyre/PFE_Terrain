@@ -1,10 +1,15 @@
-#define BOOST_TEST_MODULE VariableOption test
-#include <boost/test/unit_test.hpp>
+#include <QtTest/QtTest>
 #include "VariableOption.h"
 
-BOOST_AUTO_TEST_CASE(value)
+class TestVariableOption: public QObject
 {
-  VariableOption vo("name", 50.5, 1, 271, 0.01);
-  
-  BOOST_CHECK_EQUAL(vo.value(), 50.5);
-}
+    Q_OBJECT
+private slots:
+  void value(){
+    VariableOption vo("label", 50.2, 1, 78, 0.01);
+    QVERIFY(vo.value() == 50.2);
+  }
+};
+
+QTEST_MAIN(TestVariableOption)
+#include "VariableOptionTest.moc"
