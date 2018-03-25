@@ -14,9 +14,9 @@ out VertexData {
 } tcs_out[];
 
 const int CONSTANT = 0;
-const int APADTIVE_DISTANCE = 1;
-const int APADTIVE_VIEWSPACE = 2;
-const int APADTIVE_ELEVATION = 3;
+const int ADAPTATIVE_DISTANCE = 1;
+const int ADAPTATIVE_VIEWSPACE = 2;
+const int ADAPTATIVE_ELEVATION = 3;
 
 uniform float TessLevelInner;
 uniform vec3 TessLevelOuter;
@@ -78,7 +78,7 @@ void main() {
             gl_TessLevelOuter[0] = TessLevelOuter.x;
             gl_TessLevelOuter[1] = TessLevelOuter.y;
             gl_TessLevelOuter[2] = TessLevelOuter.z;
-        } else if (tessMethod == APADTIVE_DISTANCE) {
+        } else if (tessMethod == ADAPTATIVE_DISTANCE) {
             vec3 v0 = tcs_in[0].position.xyz;
             vec3 v1 = tcs_in[1].position.xyz;
             vec3 v2 = tcs_in[2].position.xyz;
@@ -95,7 +95,7 @@ void main() {
             gl_TessLevelOuter[0] = lvl0;
             gl_TessLevelOuter[1] = lvl1;
             gl_TessLevelOuter[2] = lvl2;
-        } else if (tessMethod == APADTIVE_VIEWSPACE) {
+        } else if (tessMethod == ADAPTATIVE_VIEWSPACE) {
             vec4 v0 = tcs_in[0].position;
             vec4 v1 = tcs_in[1].position;
             vec4 v2 = tcs_in[2].position;
@@ -120,7 +120,7 @@ void main() {
             gl_TessLevelOuter[0] = lvl0;
             gl_TessLevelOuter[1] = lvl1;
             gl_TessLevelOuter[2] = lvl2;
-        } else if (tessMethod == APADTIVE_ELEVATION) {
+        } else if (tessMethod == ADAPTATIVE_ELEVATION) {
             vec3 v0 = tcs_in[0].position.xyz;
             vec3 v1 = tcs_in[1].position.xyz;
             vec3 v2 = tcs_in[2].position.xyz;

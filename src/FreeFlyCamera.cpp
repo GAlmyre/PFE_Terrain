@@ -9,7 +9,7 @@ using namespace Eigen;
 
 FreeFlyCamera::FreeFlyCamera()
   : PerspectiveCamera(), m_position(Vector3f::Zero()), m_direction(Vector3f::UnitZ()), m_yaw(0), m_pitch(0),
-    m_mouseOffset(0.f, 0.f), m_rotating(false), m_upOffset(0), m_grabbed(false)
+    m_mouseOffset(0.f, 0.f), m_rotating(false), m_upOffset(0), m_snapped(false)
 {
   setDirection(m_direction);
 
@@ -19,7 +19,7 @@ FreeFlyCamera::FreeFlyCamera()
 
 FreeFlyCamera::FreeFlyCamera(const Eigen::Vector3f &position, const Eigen::Vector3f &direction, int width, int height)
   : PerspectiveCamera(width, height), m_position(position), m_yaw(0), m_pitch(0),
-    m_mouseOffset(0.f, 0.f), m_rotating(false), m_upOffset(0), m_grabbed(false)
+    m_mouseOffset(0.f, 0.f), m_rotating(false), m_upOffset(0), m_snapped(false)
 {
   setDirection(direction);
 
@@ -61,7 +61,7 @@ void FreeFlyCamera::updateViewMatrix() {
   m_viewMatrix.linear().row(2) = m_direction; // Direction
 
 
-  if (m_grabbed)
+  if (m_snapped)
     m_viewMatrix.translation() = - (m_viewMatrix.linear() * (m_position + m_upOffset * m_worldUp));
   else
     m_viewMatrix.translation() = - (m_viewMatrix.linear() * m_position);
@@ -69,7 +69,7 @@ void FreeFlyCamera::updateViewMatrix() {
 
 void FreeFlyCamera::screenPosToRay(const Eigen::Vector2i &p, Eigen::Vector3f &orig, Eigen::Vector3f &dir) const {
   orig = m_position;
-  if (grabedToGround())
+  if (snappedToGround())
     orig += m_upOffset * m_worldUp;
 
   Vector3f localDir = Vector3f( ((2.0 * p[0] / m_width) - 1.0) * tan(m_fovy/2.0) * m_width / m_height,
@@ -99,7 +99,7 @@ void FreeFlyCamera::update(float dt)
 {
   // Update Position
   Vector3f dir = Vector3f::Zero();
-  if (m_grabbed) {
+  if (m_snapped) {
     if (m_keyStates[KEY_FORWARD])  dir += Vector3f(direction().x(), 0.f, direction().z());
     if (m_keyStates[KEY_BACKWARD]) dir -= Vector3f(direction().x(), 0.f, direction().z());
     if (m_keyStates[KEY_RIGHT])    dir += Vector3f(right().x(), 0.f, right().z());
@@ -218,12 +218,12 @@ void FreeFlyCamera::setUpOffset(float offset) {
   m_upOffset = offset;
 }
 
-bool FreeFlyCamera::grabedToGround() const {
-  return m_grabbed;
+bool FreeFlyCamera::snappedToGround() const {
+  return m_snapped;
 }
 
-void FreeFlyCamera::gradToGround(bool grab) {
-  m_grabbed = grab;
+void FreeFlyCamera::snapToGround(bool snap) {
+  m_snapped = snap;
 }
 
 void FreeFlyCamera::processMouseScroll(float yoffset) {

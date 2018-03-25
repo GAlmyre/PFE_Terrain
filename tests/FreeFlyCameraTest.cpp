@@ -16,11 +16,11 @@ private slots:
   void position(){
     QVERIFY(_camera.position() == Eigen::Vector3f(1.0,1.0,1.0));
   }
-  void grabbed(){
-    _camera.gradToGround(true);
-    QVERIFY(_camera.grabedToGround() == true);
-    _camera.gradToGround(false);
-    QVERIFY(_camera.grabedToGround() == false);
+  void snapped(){
+    _camera.snapToGround(true);
+    QVERIFY(_camera.snappedToGround() == true);
+    _camera.snapToGround(false);
+    QVERIFY(_camera.snappedToGround() == false);
   }
 
 };

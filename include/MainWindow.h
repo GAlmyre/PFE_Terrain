@@ -42,7 +42,7 @@ private:
 
 public:
   QAction *_toggleNormalsAction;
-  QAction *_toggleGradAction;
+  QAction *_toggleSnapAction;
   QAction *_toggleBenchAction;
 
 private slots:
@@ -54,7 +54,7 @@ private slots:
   void loadedHeightMap(const QString&);
   void loadedTexture(const QImage&);
   void toggledNormals(bool);
-  void toggledGrab(bool);
+  void toggledSnap(bool);
   void toggledBench(bool);
 };
 

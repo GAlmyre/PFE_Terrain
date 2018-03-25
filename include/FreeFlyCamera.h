@@ -22,8 +22,8 @@ public:
   // Throw a ray through screen
   void screenPosToRay(const Eigen::Vector2i &p, Eigen::Vector3f &orig, Eigen::Vector3f &dir) const override;
 
-  bool grabedToGround() const;
-  void gradToGround(bool grab);
+  bool snappedToGround() const;
+  void snapToGround(bool snap);
   void setUpOffset(float offset);
 
   Eigen::Vector3f position() const;
@@ -64,7 +64,7 @@ private:
   std::map<Key, bool> m_keyStates;
   bool m_rotating;
   float m_upOffset;
-  bool m_grabbed;
+  bool m_snapped;
 
   // Mouse Offsets
   size_t m_bufferSize = 5;

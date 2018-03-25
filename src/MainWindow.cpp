@@ -69,11 +69,11 @@ void MainWindow::createActions() {
     emit toggledNormals(checked);
   });
 
-  _toggleGradAction = new QAction(tr("&Grab camera on ground"), this);
-  _toggleGradAction->setStatusTip(tr("Make the camera flying on top of the ground"));
-  _toggleGradAction->setCheckable(true);
-  connect(_toggleGradAction, &QAction::toggled, [this] (bool checked) {
-    emit toggledGrab(checked);
+  _toggleSnapAction = new QAction(tr("&Snap camera to ground"), this);
+  _toggleSnapAction->setStatusTip(tr("Make the camera flying on top of the ground"));
+  _toggleSnapAction->setCheckable(true);
+  connect(_toggleSnapAction, &QAction::toggled, [this] (bool checked) {
+    emit toggledSnap(checked);
   });
 }
 
@@ -87,7 +87,7 @@ void MainWindow::createMenu() {
   _toolsMenu = menuBar()->addMenu(tr("&Tools"));
   _toolsMenu->addAction(_toggleBenchAction);
   _toolsMenu->addAction(_toggleNormalsAction);
-  _toolsMenu->addAction(_toggleGradAction);
+  _toolsMenu->addAction(_toggleSnapAction);
 }
 
 // Handles the opening of a heightmap

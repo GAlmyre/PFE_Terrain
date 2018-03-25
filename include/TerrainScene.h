@@ -288,7 +288,7 @@ public:
   }
 
   void update(float dt) override {
-    if (_camera->grabedToGround()) {
+    if (_camera->snappedToGround()) {
       Eigen::Vector3f camPos = _camera->position();
       float h = 0;
       if (_terrain.coordsInTerrain(camPos.x(), camPos.z()))
@@ -673,10 +673,10 @@ public:
                        _showNormals = checked;
                      });
 
-    QObject::connect(mw, &MainWindow::toggledGrab,
+    QObject::connect(mw, &MainWindow::toggledSnap,
                      [this](bool checked) {
-                       _camera->gradToGround(checked);
-                       if (!_camera->grabedToGround())
+                       _camera->snapToGround(checked);
+                       if (!_camera->snappedToGround())
                          _camera->setUpOffset(0);
                      });
 
@@ -750,7 +750,7 @@ public:
         _camera->processKeyPress(FreeFlyCamera::KEY_DOWN);
         break;
       case Qt::Key_G:
-        _mainWindow->_toggleGradAction->toggle();
+        _mainWindow->_toggleSnapAction->toggle();
         break;
       case Qt::Key_N:
         _mainWindow->_toggleNormalsAction->toggle();
