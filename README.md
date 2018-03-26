@@ -60,6 +60,8 @@ You can use "G" to active the "ground camera" (the camera will be following the 
 
 You can use "R" to reload the shaders corresponding to the scene.
 
+You can use "B" to active the benchmark window.
+
 --------------------
 IV - Folder content
 --------------------
