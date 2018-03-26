@@ -28,8 +28,14 @@ II - Instructions
 ------------------
 
 If you've found this README, you're at the right place.
-In the same folder you will find a file named "install.sh".
-Run this script. It will create a "build" folder and install the software inside. When the installation is over, you just have to go into the build fodler and run the executable.
+Use the following command lines to install :
+
+	$~/mkdir build
+	$~/cd build
+	$~/cmake ..
+	$~/make -j8
+
+Then you just have to run the builded project from the build folder.
 
 ---------------
 III - Controls
@@ -66,13 +72,12 @@ You can use "B" to active the benchmark window.
 IV - Folder content
 --------------------
 
-In this folder, you will find 4 folders and 3 files.
+In this folder, you will find 4 folders and 2 files.
 
 As files, you will find :
 
   "README.md"      -   The README you are reading right now.
   "CmakeLists.txt"  -   The file needed for a correct install.
-  "install.sh"      -   the script to run for installing the software.
 
 As folders, you will find :
 
